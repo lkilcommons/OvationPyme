@@ -397,7 +397,7 @@ class SeasonalFluxEstimator(object):
 			for j_mlat in range(self.n_mlat_bins/2):
 				#The mlat bins are orgainized like -90:dlat:-50,50:dlat:90
 				fluxgridN[j_mlat,i_mlt] = self.estimate_auroral_flux(dF,i_mlt,self.n_mlat_bins/2+j_mlat)
-				fluxgridS[j_mlat,i_mlt] = self.estimate_auroral_flux(dF,i_mlt,self.n_mlat_bins/2-j_mlat-1)
+				fluxgridS[j_mlat,i_mlt] = self.estimate_auroral_flux(dF,i_mlt,j_mlat)
 
 		if not combined_N_and_S:
 			return mlatgridN,mltgridN,fluxgridN,mlatgridS,mltgridS,fluxgridS
