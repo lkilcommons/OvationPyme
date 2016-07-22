@@ -262,7 +262,7 @@ class SeasonalFluxEstimator(object):
 		#adata has 5 columns, mlt bin number, mlat bin number, b1, b2, rF
 		#adata has nmlat*nmlt rows (one for each positional bin)
 
-	def which_dF_bin(dF):
+	def which_dF_bin(self,dF):
 		"""
 		
 		Given a coupling strength value, finds the bin it falls into
@@ -322,7 +322,7 @@ class SeasonalFluxEstimator(object):
 		"""
 		b1,b2 = self.b1a[i_mlt_bin,i_mlat_bin],self.b2a[i_mlt_bin,i_mlat_bin]
 		p = self.prob_estimate(dF,i_mlt_bin,i_mlat_bin)
-		print p,b1,b2,dF
+		#print p,b1,b2,dF
 		flux = (b1+b2*dF)*p
 		return self.correct_flux(flux)
 		
@@ -390,13 +390,14 @@ class SeasonalFluxEstimator(object):
 		fluxgridS = np.zeros((self.n_mlat_bins/2,self.n_mlt_bins))
 		fluxgridS.fill(np.nan)
 		#Make grid coordinates
-		mlatgridS,mltgridS = np.meshgrid(self.mlats[:self.n_mlat_bins/2],self.mlts)
+		mlatgridS,mltgridS = np.meshgrid(self.mlats[:self.n_mlat_bins/2][::-1],self.mlts)
+		#print self.mlats[:self.n_mlat_bins/2]
 		
 		for i_mlt in range(self.n_mlt_bins):
 			for j_mlat in range(self.n_mlat_bins/2):
 				#The mlat bins are orgainized like -90:dlat:-50,50:dlat:90
-				north_grid[j_mlat,i_mlt] = self.estimate_auroral_flux(dF,i_mlt,self.n_mlat_bins/2+j_mlat)
-				south_grid[j_mlat,i_mlt] = self.estimate_auroral_flux(dF,i_mlt,j_mlat)
+				fluxgridN[j_mlat,i_mlt] = self.estimate_auroral_flux(dF,i_mlt,self.n_mlat_bins/2+j_mlat)
+				fluxgridS[j_mlat,i_mlt] = self.estimate_auroral_flux(dF,i_mlt,self.n_mlat_bins/2-j_mlat-1)
 
 		if not combined_N_and_S:
 			return mlatgridN,mltgridN,fluxgridN,mlatgridS,mltgridS,fluxgridS
