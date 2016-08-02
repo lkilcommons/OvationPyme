@@ -65,7 +65,7 @@ Newell solar wind coupling function (see references). __Not yet implemented__
 
 ## References
 
--Cousins, E. D. P., T. Matsuo, and A. D. Richmond (2015), Mapping high-latitude ionospheric electrodynamics with SuperDARN and AMPERE, J. Geophys. Res. Space Physics, 120, 5854–5870, doi:10.1002/2014JA020463.
+- Cousins, E. D. P., T. Matsuo, and A. D. Richmond (2015), Mapping high-latitude ionospheric electrodynamics with SuperDARN and AMPERE, J. Geophys. Res. Space Physics, 120, 5854–5870, doi:10.1002/2014JA020463.
 
 - Machol, J. L., J. C. Green, R. J. Redmon, R. A. Viereck, and P. T. Newell (2012), Evaluation of OVATION
 Prime as a Forecast Model for Visible Aurorae, Space Weather, 10, S03005,
