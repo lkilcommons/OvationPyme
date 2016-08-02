@@ -13,7 +13,7 @@ The original model was created by Patrick Newell et. al. (John Hopkins Applied P
 ## Provenance of this implementation
 Ovation Pyme is a complete translation of the IDL (a proprietary programming language,
 owned by ExelisVis) version used by NOAA, which was released in an open source format 
-(Sourceforge)[https://sourceforge.net/projects/ovation-prime/] by Rob Redmon and Janet Machol
+[Sourceforge](https://sourceforge.net/projects/ovation-prime/) by Rob Redmon and Janet Machol
 of NOAA National Center for Environmental Information (NCEI). 
 Liam Kilcommons created this software to support the Pythonification of the Assimiliative Mapping
 of Ionospheric Electrodynamics project (AMIEPy), and for the Python space science community. 
@@ -50,6 +50,7 @@ i.e. from the command line run:
 `python ovationpyme/functionaltests.py`
 
 The current test plots are:
+
 1. A plot of the Northern and Southern polar electron energy flux for a fixed solar coupling value for one of the seasons (summer)
 
 2. A plot of the combined (averaged) northern and southern electron energy flux for the hemispherically appropriate summer
