@@ -13,7 +13,7 @@ The original model was created by Patrick Newell et. al. (John Hopkins Applied P
 ## Provenance of this implementation
 Ovation Pyme is a complete translation of the IDL (a proprietary programming language,
 owned by ExelisVis) version used by NOAA, which was released in an open source format 
-(Sourceforge)[https://sourceforge.net/projects/ovation-prime/] by Rob Redmon and Janet Machol
+[Sourceforge](https://sourceforge.net/projects/ovation-prime/) by Rob Redmon and Janet Machol
 of NOAA National Center for Environmental Information (NCEI). 
 Liam Kilcommons created this software to support the Pythonification of the Assimiliative Mapping
 of Ionospheric Electrodynamics project (AMIEPy), and for the Python space science community. 
@@ -29,7 +29,7 @@ summer and southern activity in the winter). In OvationPyme, the seasonal weight
 DOY is done on both hemispheres seperately with the 
 southern hemisphere weighting calculated for DOY_S = 365-DOY, and then the hemispheres are combined. 
 
-## Additional features beyond IDL version:
+## Future Features To Be Added (beyond IDL version):
 1. Estimated ionospheric height-integrated conductivity (conductance) using 
 the technique used by Ellen Cousins et. al. (2015), which uses the Robinson emperical
 relationship mapping conductance to a function of total electron energy flux and average energy.
@@ -50,25 +50,33 @@ i.e. from the command line run:
 `python ovationpyme/functionaltests.py`
 
 The current test plots are:
+
 1. A plot of the Northern and Southern polar electron energy flux for a fixed solar coupling value for one of the seasons (summer)
+
 2. A plot of the combined (averaged) northern and southern electron energy flux for the hemispherically appropriate summer
-(the data for boreal summer for the north, and for boreal winter (which is austral summer), for the south. This is traditionally how the model is run (combined hemispheres).
+(the data for boreal summer for the north, and for boreal winter (which is austral summer), for the south. This is traditionally how the model is run (combined hemispheres). __Not yet implemented__
+
 3. A plot of the electron energy flux for 
 combined hemispheres for a particular time (12:00 UT on DOY 104, April 14th, the day of a geomagnetic storm). This
 tests the ability of the code to automatically download solar wind data from the NASA Omniweb FTP server and calculate the 
-Newell solar wind coupling function (see references).
-4. A plot of the ionospheric hall and pedersen conductances for the Northern Hemisphere for DOY 104, April 14th, 2006.
+Newell solar wind coupling function (see references). __Not yet implemented__
+
+4. A plot of the ionospheric hall and pedersen conductances for the Northern Hemisphere for DOY 104, April 14th, 2006. __Not yet implemented__
 
 ## References
 
--Cousins, E. D. P., T. Matsuo, and A. D. Richmond (2015), Mapping high-latitude ionospheric electrodynamics with SuperDARN and AMPERE, J. Geophys. Res. Space Physics, 120, 5854–5870, doi:10.1002/2014JA020463.
+- Cousins, E. D. P., T. Matsuo, and A. D. Richmond (2015), Mapping high-latitude ionospheric electrodynamics with SuperDARN and AMPERE, J. Geophys. Res. Space Physics, 120, 5854–5870, doi:10.1002/2014JA020463.
+
 - Machol, J. L., J. C. Green, R. J. Redmon, R. A. Viereck, and P. T. Newell (2012), Evaluation of OVATION
 Prime as a Forecast Model for Visible Aurorae, Space Weather, 10, S03005,
 doi:10.1029/2011SW000746.
+
 - Newell, P.T., T. Sotirelis, K. Liou, C.‐I. Meng, and F.J. Rich (2007), A nearly universal solar wind‐
 magnetosphere coupling function inferred from 10 magnetospheric state variables, J. Geophys. Res.,
 112, A01206, doi:10.1029/2006JA012015.
+
 - Newell, P. T., T. Sotirelis, and S. Wing (2009), Diffuse, monoenergetic, and broadband aurora: The global
 precipitation budget, J. Geophys. Res., 114, A09207, doi:10.1029/2009JA014326.Newell, P. T., T. Sotirelis, and S. Wing (2010), Seasonal variations in diffuse, monoenergetic, and broadband aurora, J. Geophys. Res., 115, A03216, doi:10.1029/2009JA014805.
+
 - Sotirelis, T. and P. T. Newell (2000), "Boundary-oriented electron precipitation model," J. Geophys. Res.,
 105 (A8), 18,655-18,673.
