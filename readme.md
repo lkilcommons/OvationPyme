@@ -66,13 +66,17 @@ Newell solar wind coupling function (see references). __Not yet implemented__
 ## References
 
 -Cousins, E. D. P., T. Matsuo, and A. D. Richmond (2015), Mapping high-latitude ionospheric electrodynamics with SuperDARN and AMPERE, J. Geophys. Res. Space Physics, 120, 5854–5870, doi:10.1002/2014JA020463.
+
 - Machol, J. L., J. C. Green, R. J. Redmon, R. A. Viereck, and P. T. Newell (2012), Evaluation of OVATION
 Prime as a Forecast Model for Visible Aurorae, Space Weather, 10, S03005,
 doi:10.1029/2011SW000746.
+
 - Newell, P.T., T. Sotirelis, K. Liou, C.‐I. Meng, and F.J. Rich (2007), A nearly universal solar wind‐
 magnetosphere coupling function inferred from 10 magnetospheric state variables, J. Geophys. Res.,
 112, A01206, doi:10.1029/2006JA012015.
+
 - Newell, P. T., T. Sotirelis, and S. Wing (2009), Diffuse, monoenergetic, and broadband aurora: The global
 precipitation budget, J. Geophys. Res., 114, A09207, doi:10.1029/2009JA014326.Newell, P. T., T. Sotirelis, and S. Wing (2010), Seasonal variations in diffuse, monoenergetic, and broadband aurora, J. Geophys. Res., 115, A03216, doi:10.1029/2009JA014805.
+
 - Sotirelis, T. and P. T. Newell (2000), "Boundary-oriented electron precipitation model," J. Geophys. Res.,
 105 (A8), 18,655-18,673.
