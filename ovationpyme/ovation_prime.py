@@ -7,6 +7,7 @@ import numpy as np
 from ovationpyme import ovation_utilities
 import geospacepy
 import os
+from scipy import interpolate
 
 #Determine where this module's source file is located
 #to determine where to look for the tables
@@ -183,7 +184,8 @@ class SeasonalFluxEstimator(object):
 
 		self.n_mlt_bins,self.n_mlat_bins,self.n_dF_bins = nmlt,nmlat,ndF
 
-		self.mlats = np.concatenate([np.linspace(-90.,-50.,self.n_mlat_bins/2),
+		#The mlat bins are orgainized like -50:-dlat:-90,50:dlat:90
+		self.mlats = np.concatenate([np.linspace(-90.,-50.,self.n_mlat_bins/2)[::-1],
 											np.linspace(50.,90.,self.n_mlat_bins/2)])
 
 		self.mlts = np.linspace(0.,24.,self.n_mlt_bins)
@@ -318,7 +320,6 @@ class SeasonalFluxEstimator(object):
 		Does what it says on the tin,
 		estimates the flux using the regression coeffecients in the 'a' files
 
-		fluxtype can use either numerical code or string description in self.fluxtypes
 		"""
 		b1,b2 = self.b1a[i_mlt_bin,i_mlat_bin],self.b2a[i_mlt_bin,i_mlat_bin]
 		p = self.prob_estimate(dF,i_mlt_bin,i_mlat_bin)
@@ -366,7 +367,7 @@ class SeasonalFluxEstimator(object):
 				flux = 0.
 		return flux
 
-	def get_gridded_flux(self,dF,combined_N_and_S=True):
+	def get_gridded_flux(self,dF,combined_N_and_S=False,interp_N=True):
 		"""
 		Return the flux interpolated onto arbitary locations
 		in mlats and mlts
@@ -380,36 +381,94 @@ class SeasonalFluxEstimator(object):
 			the northern hemisphere, and to use 365 - actual doy to
 			get a combined result appropriate for the southern hemisphere
 
+		interp_N, bool, optional
+
+			Interpolate flux linearly for each latitude ring in the wedge
+			of low coverage in northern hemisphere dawn/midnight region
+
 		"""
 
 		fluxgridN = np.zeros((self.n_mlat_bins/2,self.n_mlt_bins))
 		fluxgridN.fill(np.nan)
 		#Make grid coordinates
-		mlatgridN,mltgridN = np.meshgrid(self.mlats[self.n_mlat_bins/2:],self.mlts)
+		mlatgridN,mltgridN = np.meshgrid(self.mlats[self.n_mlat_bins/2:],self.mlts,indexing='ij')
 		
 		fluxgridS = np.zeros((self.n_mlat_bins/2,self.n_mlt_bins))
 		fluxgridS.fill(np.nan)
 		#Make grid coordinates
-		mlatgridS,mltgridS = np.meshgrid(self.mlats[:self.n_mlat_bins/2][::-1],self.mlts)
+		mlatgridS,mltgridS = np.meshgrid(self.mlats[:self.n_mlat_bins/2],self.mlts,indexing='ij')
 		#print self.mlats[:self.n_mlat_bins/2]
 		
 		for i_mlt in range(self.n_mlt_bins):
 			for j_mlat in range(self.n_mlat_bins/2):
-				#The mlat bins are orgainized like -90:dlat:-50,50:dlat:90
+				#The mlat bins are orgainized like -50:-dlat:-90,50:dlat:90
 				fluxgridN[j_mlat,i_mlt] = self.estimate_auroral_flux(dF,i_mlt,self.n_mlat_bins/2+j_mlat)
 				fluxgridS[j_mlat,i_mlt] = self.estimate_auroral_flux(dF,i_mlt,j_mlat)
+
+		if interp_N:
+			fluxgridN,inwedge = self.interp_wedge(mlatgridN,mltgridN,fluxgridN)
 
 		if not combined_N_and_S:
 			return mlatgridN,mltgridN,fluxgridN,mlatgridS,mltgridS,fluxgridS
 		else:
 			return mlatgridN,mltgridN,(fluxgridN+fluxgridS)/2.
 
+	def interp_wedge(self,mlatgridN,mltgridN,fluxgridN):
+		"""
+		Interpolates across the wedge shaped data gap
+		around 50 magnetic latitude and 23-4 MLT.
+		Interpolation is performed individually 
+		across each magnetic latitude ring,
+		only missing flux values are filled with the
+		using the interpolant
+		"""
+		#Constants copied verbatim from IDL code
+		x_mlt_min=-1.0   #minimum MLT for interpolation [hours] --change if desired
+		x_mlt_max=4.0    #maximum MLT for interpolation [hours] --change if desired
+		x_mlat_min=50.0  #minimum MLAT for interpolation [degrees]
+		x_mlat_max=75.0  #maximum MLAT for interpolation [degrees] --change if desired (LMK increased this from 67->75)
 
+		valid_interp_mlat_bins = np.logical_and(mlatgridN[:,0]>=x_mlat_min,mlatgridN[:,0]<=x_mlat_max).flatten()
+		inwedge = np.zeros(fluxgridN.shape,dtype=bool) #Store where we did interpolation
 
+		for i_mlat_bin in np.flatnonzero(valid_interp_mlat_bins).tolist():
+			#Technically any row in the MLT grid would do, but for consistancy use the i_mlat_bin-th one
+			this_mlat = mlatgridN[i_mlat_bin,0]
+			this_mlt = mltgridN[i_mlat_bin,:]
+			this_flux = fluxgridN[i_mlat_bin,:]
 
+			#Change from 0-24 MLT to -12 to 12 MLT, so that there is no discontiunity at midnight
+			#when we interpolate
+			this_mlt[this_mlt>12.] = this_mlt[this_mlt>12.]-24.
 
+			valid_interp_mlt_bins = np.logical_and(this_mlt>=x_mlt_min,this_mlt<=x_mlt_max).flatten()
+			mlt_bins_missing_flux = np.logical_not(this_flux>0.).flatten()
+			interp_bins_missing_flux = np.logical_and(valid_interp_mlt_bins,mlt_bins_missing_flux)
+			inwedge[i_mlat_bin,:] = interp_bins_missing_flux
 
+			if np.count_nonzero(interp_bins_missing_flux) > 0:
+				
+				#Bins right next to missing wedge probably have bad statistics, so
+				#don't include them
+				interp_bins_missing_flux_inds = np.flatnonzero(interp_bins_missing_flux)
+				nedge=1
+				for edge_offset in range(1,nedge+1):
+					lower_edge_ind = interp_bins_missing_flux_inds[0]-edge_offset
+					upper_edge_ind = np.mod(interp_bins_missing_flux_inds[-1]+edge_offset,len(interp_bins_missing_flux))
+					interp_bins_missing_flux[lower_edge_ind] = interp_bins_missing_flux[interp_bins_missing_flux_inds[0]]
+					interp_bins_missing_flux[upper_edge_ind] = interp_bins_missing_flux[interp_bins_missing_flux_inds[-1]]
+					
+				interp_source_bins = np.flatnonzero(np.logical_not(interp_bins_missing_flux))
 
+				flux_interp = interpolate.interp1d(this_mlt[interp_source_bins],this_flux[interp_source_bins],'slinear')
+				fluxgridN[i_mlat_bin,interp_bins_missing_flux] = flux_interp(this_mlt[interp_bins_missing_flux])
+
+				#print fluxgridN[i_mlat_bin,interp_bins_missing_flux]
+				print "For latitude %.1f, replaced %d flux bins between MLT %.1f and %.1f with interpolated flux..." % (this_mlat,
+					np.count_nonzero(interp_bins_missing_flux),np.nanmin(this_mlt[interp_bins_missing_flux]),
+					np.nanmax(this_mlt[interp_bins_missing_flux]))
+
+		return fluxgridN,inwedge
 
 
 
