@@ -30,6 +30,7 @@ DOY is done on both hemispheres seperately with the
 southern hemisphere weighting calculated for DOY_S = 365-DOY, and then the hemispheres are combined. 
 
 ## Additional features beyond IDL version:
+##----------FUTURE FEATURES, NOT YET IMPLEMENTED-----------
 1. Estimated ionospheric height-integrated conductivity (conductance) using 
 the technique used by Ellen Cousins et. al. (2015), which uses the Robinson emperical
 relationship mapping conductance to a function of total electron energy flux and average energy.
