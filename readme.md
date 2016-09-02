@@ -54,14 +54,14 @@ The current test plots are:
 1. A plot of the Northern and Southern polar electron energy flux for a fixed solar coupling value for one of the seasons (summer)
 
 2. A plot of the combined (averaged) northern and southern electron energy flux for the hemispherically appropriate summer
-(the data for boreal summer for the north, and for boreal winter (which is austral summer), for the south. This is traditionally how the model is run (combined hemispheres). __Not yet implemented__
+(the data for boreal summer for the north, and for boreal winter (which is austral summer), for the south. This is traditionally how the model is run (combined hemispheres). 
 
 3. A plot of the electron energy flux for 
-combined hemispheres for a particular time (12:00 UT on DOY 104, April 14th, the day of a geomagnetic storm). This
+combined hemispheres for a particular time. This
 tests the ability of the code to automatically download solar wind data from the NASA Omniweb FTP server and calculate the 
-Newell solar wind coupling function (see references). __Not yet implemented__
+Newell solar wind coupling function (see references). 
 
-4. A plot of the ionospheric hall and pedersen conductances for the Northern Hemisphere for DOY 104, April 14th, 2006. __Not yet implemented__
+4. A plot of the ionospheric hall and pedersen conductances for the Northern Hemisphere.
 
 ## References
 

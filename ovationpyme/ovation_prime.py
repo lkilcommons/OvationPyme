@@ -4,9 +4,13 @@ Ovation Prime (historically called season_epoch.pro)
 """
 import scipy.interpolate as interpolate
 import numpy as np
+import datetime
 from ovationpyme import ovation_utilities
+from geospacepy import special_datetime,astrodynamics2,satplottools
 import geospacepy
 import os
+import aacgmv2 #available on pip
+import apexpy
 from scipy import interpolate
 
 #Determine where this module's source file is located
@@ -14,7 +18,30 @@ from scipy import interpolate
 src_file_dir = os.path.dirname(os.path.realpath(__file__))
 ovation_datadir = os.path.join(src_file_dir,'data')
 
-class OvationConductance(object):
+class LatLocaltimeInterpolator(object):
+	def __init__(self,mlat_grid,mlt_grid,var):
+		self.mlat_orig = mlat_grid
+		self.mlt_orig = mlt_grid
+		self.zvar = var
+		n_north,n_south = np.count_nonzero(self.mlat_orig>0.),np.count_nonzero(self.mlat_orig<0.)
+		if n_south == 0.:
+			self.hemisphere = 'N'
+		elif n_north == 0.:
+			self.hemisphere = 'S'
+		else:
+			raise ValueError('Latitude grid contains northern (N=%d) and southern (N=%d) values.' % (n_north,n_south)+\
+							' Can only interpolate one hemisphere at a time.')
+
+	def interpolate(self,new_mlat_grid,new_mlt_grid,method='linear'):
+		""" 
+		Rectangularize and Interpolate (using Linear 2D interpolation)
+		"""
+		X0,Y0 = satplottools.latlt2cart(self.mlat_orig.flatten(),self.mlt_orig.flatten(),self.hemisphere)
+		X,Y = satplottools.latlt2cart(new_mlat_grid.flatten(),new_mlt_grid.flatten(),self.hemisphere)
+		interpd_zvar = interpolate.griddata((X0,Y0),self.zvar.flatten(),(X,Y),method=method)
+		return interpd_zvar.reshape(new_mlat_grid.shape)
+
+class ConductanceEstimator(object):
 	"""
 	Implements the 'Robinson Formula'
 	for estimating Pedersen and Hall height integrated
@@ -23,11 +50,124 @@ class OvationConductance(object):
 	total electron energy flux 
 	(assumes a Maxwellian electron energy distribution)
 	"""
-	def __init__(self,dt):
+	def __init__(self,start_dt,end_dt):
 		#Use diffuse aurora only
-		self.eflux_estimator = FluxEstimator('diff','electron energy flux')
-		self.eavg_estimator = FluxEstimator('diff','electron average energy')
+		self.numflux_estimator = FluxEstimator('diff','electron number flux',start_dt=start_dt,end_dt=end_dt)
+		#self.energyflux_estimator = FluxEstimator('diff','electron energy flux',start_dt=start_dt,end_dt=end_dt)
+		self.eavg_estimator = FluxEstimator('diff','electron average energy',start_dt=start_dt,end_dt=end_dt)
+
+		#Need hourly omni data for F10.7
+		self.oi = geospacepy.omnireader.omni_interval(start_dt,end_dt,'hourly',silent=True) 
+		self.omjd = special_datetime.datetimearr2jd(self.oi['Epoch'])
+		self.omf107 = self.oi['F10_INDEX']	
+
+	def get_closest_f107(self,dt):
+		"""
+		Finds closest F10.7 value from hourly omni data to match with datetime
+		Brekke and Moen describe using the daily F10.7 in the parameterizaton, 
+		so I just do the mean for all of the 1 hour values for the day.
+		"""
+		jd = special_datetime.datetime2jd(dt)
+		imatch = np.floor(self.omjd.flatten())==np.floor(jd)
+		return np.nanmean(self.omf107[imatch])
+
+	def get_conductance(self,dt,hemi='N',solar=True,auroral=True):
+		"""
+		Compute total conductance using Robinson formula and emperical solar conductance model
+		"""
+		mlat_grid,mlt_grid,numflux_grid = self.numflux_estimator.get_flux_for_time(dt,hemi=hemi)
+		#mlat_grid,mlt_grid,energyflux_grid = self.energyflux_estimator.get_flux_for_time(dt,hemi=hemi)
+		mlat_grid,mlt_grid,eavg_grid = self.eavg_estimator.get_flux_for_time(dt,hemi=hemi)
+
+		sigp_solar,sigh_solar =  self.solar_conductance(dt,mlat_grid,mlt_grid)
+
+		#From E. Cousins IDL code
+		#Implement the Robinson formula
+		#Assume all of the particles come in at the average energy??
+
+		energyflux_grid = numflux_grid*1.6022e-9*eavg_grid #keV to ergs, * #/(cm^2 s)
+		#energyflux_grid *= 1.6022e-9
+		sigp_auroral = 40.*eavg_grid/(16+eavg_grid**2) * np.sqrt(energyflux_grid)
+		sigh_auroral = 0.45*eavg_grid**0.85*sigp_auroral
+
+		if solar and not auroral:
+			sigp = sigp_solar
+			sigh = sigp_solar
+		if auroral and not solar:
+			sigp = sigp_auroral
+			sigh = sigh_auroral
+		else:
+			sigp = np.sqrt(sigp_solar**2+sigp_auroral**2)
+			sigh = np.sqrt(sigh_solar**2+sigh_auroral**2)
+			
+		return mlat_grid,mlt_grid,sigp,sigh
+
+	def solar_conductance(self,dt,mlats,mlts):
+		"""
+		Estimate the solar conductance using methods from:
 		
+			Cousins, E. D. P., T. Matsuo, and A. D. Richmond (2015), Mapping 
+			high-latitude ionospheric electrodynamics with SuperDARN and AMPERE
+
+			--which cites--
+
+			Asgeir Brekke, Joran Moen, Observations of high latitude ionospheric conductances
+
+			Maybe is not good for SZA for southern hemisphere? Don't know
+			Going to use absolute value of latitude because that's what's done
+			in Cousins IDL code.
+		"""
+		#Find the closest hourly f107 value
+		#to the current time to specifiy the conductance
+		f107 = self.get_closest_f107(dt)
+		print "F10.7 = %f" % (f107)
+
+		#Convert from magnetic to geocentric using the AACGMv2 python library
+ 		flatmlats,flatmlts = mlats.flatten(),mlts.flatten()
+ 		#flatmlons = (flatmlts-zero_lon_mlt)/12*180.
+		flatmlons = aacgmv2.convert_mlt(flatmlts,dt,m2a=True)
+		glats,glons = aacgmv2.convert(np.abs(flatmlats),flatmlons,110.*np.ones_like(flatmlats),
+										date=dt,a2g=True,geocentric=False)
+		szas = astrodynamics2.solar_zenith_angle(dt,glats,glons)
+		szas_rad = szas/180.*np.pi
+
+		sigp,sigh = np.zeros_like(glats),np.zeros_like(glats)
+
+		cos65 = np.cos(65/180.*np.pi)
+		sigp65  = .5*(f107*cos65)**(2./3)
+   		sigh65  = 1.8*np.sqrt(f107)*cos65
+   		sigp100 = sigp65-0.22*(100.-65.)
+
+   		in_band = szas <= 65. 
+   		print "%d/%d Zenith Angles < 65" % (np.count_nonzero(in_band),len(in_band))
+   		sigp[in_band] = .5*(f107*np.cos(szas_rad[in_band]))**(2./3)
+   		sigh[in_band] = 1.8*np.sqrt(f107)*np.cos(szas_rad[in_band])
+
+   		in_band = np.logical_and(szas >= 65.,szas < 100.)
+   		print "%d/%d Zenith Angles > 65 and < 100" % (np.count_nonzero(in_band),len(in_band)) 
+   		sigp[in_band] = sigp65-.22*(szas[in_band]-65.)
+   		sigh[in_band] = sigh65-.27*(szas[in_band]-65.)
+
+   		in_band = szas > 100.
+   		print "%d/%d Zenith Angles > 100" % (np.count_nonzero(in_band),len(in_band)) 
+   		sigp[in_band] = sigp100-.13*(szas[in_band]-100.)
+   		sigh[in_band] = sigh65-.27*(szas[in_band]-65.)
+
+   		sigp[sigp<.4] = .4
+		sigh[sigh<.8] = .8
+
+		#correct for inverse relationship with magnetic field from AMIE code
+		#(conductance_models.f90)
+		theta = np.radians(90.-glats)
+		bbp = np.sqrt(1. - 0.99524*np.sin(theta)**2)*(1. + 0.3*np.cos(theta)**2)
+   		bbh = np.sqrt(1. - 0.01504*(1.-np.cos(theta)) - 0.97986*np.sin(theta)**2)*(1.0+0.5*np.cos(theta)**2)
+   		sigp = sigp*1.134/bbp
+   		sigh = sigh*1.285/bbh
+
+   		sigp_unflat = sigp.reshape(mlats.shape)
+   		sigh_unflat = sigh.reshape(mlats.shape)
+
+   		return sigp_unflat,sigh_unflat
 
 class FluxEstimator(object):
 	"""
@@ -80,7 +220,7 @@ class FluxEstimator(object):
 
 		if seasonal_estimators is None:
 			#Make a seasonal estimator for each season with nonzero weight
-			self.seasonal_flux_estimators = {season:SeasonalFluxEstimator(seasons,atype,jtype) for season in seasons}				
+			self.seasonal_flux_estimators = {season:SeasonalFluxEstimator(season,atype,jtype) for season in seasons}				
 		else:
 			#Ensure the passed seasonal estimators are approriate for this atype and jtype
 			for season,estimator in seasonal_flux_estimators.iteritems():
@@ -88,26 +228,36 @@ class FluxEstimator(object):
 			if not jtype_atype_ok:
 				raise RuntimeError('Auroral and flux type of SeasonalFluxEstimators do not match %s and %s!' % (self.atype,self.jtype))
 
-	def get_flux_for_time(dt,hemi='N'):
+	def get_flux_for_time(self,dt,hemi='N'):
 		"""
 		doy must be single value
 		mlats and mlts can be arbitary shape, but both must be same shape
 		"""
 		doy = dt.timetuple().tm_yday
-		if hemi == 'S':
-			doy = 365.-doy #Use opposite season coefficients to get southern hemisphere results
+		#if hemi == 'S':
+		#	doy = 365.-doy #Use opposite season coefficients to get southern hemisphere results
 
-		weights = self.season_weights(doy)
-		dF = ovation_utilities.calc_avg_solarwind(dt,oi=self.oi)
+		if hemi=='N':
+			weightsN = self.season_weights(doy)
+			weightsS = self.season_weights(365.-doy)
+		elif hemi=='S':
+			weightsN = self.season_weights(365.-doy)
+			weightsS = self.season_weights(doy)
+
+		avgsw = ovation_utilities.calc_avg_solarwind(dt,oi=self.oi)
+		dF = avgsw['Ec']
 		seasonal_flux = {}
-		n_mlat_bins = self.seasonal_estimators.items()[0].n_mlat_bins/2 #div by 2 because combined N&S hemispheres
-		n_mlt_bins = self.seasonal_estimators.items()[0].n_mlt_bins
-		gridflux = np.zeros(n_mlat_bins,n_mlt_bins)
-		for season in weights:
-			if weights[season] > 0.:
-				flux_estimator = self.seasonal_flux_estimators[season]
-				grid_mlats,grid_mlts,grid_seasonflux = flux_estimator.get_gridded_flux(dF)
-				gridflux += grid_seasonflux*weights[season]
+		n_mlat_bins = self.seasonal_flux_estimators.items()[0][1].n_mlat_bins/2 #div by 2 because combined N&S hemispheres
+		n_mlt_bins = self.seasonal_flux_estimators.items()[0][1].n_mlt_bins
+		gridflux = np.zeros((n_mlat_bins,n_mlt_bins))
+		for season in weightsN:
+			flux_estimator = self.seasonal_flux_estimators[season]
+			grid_mlats,grid_mlts,grid_fluxN,gridmlatsS,grid_mltsS,grid_fluxS = flux_estimator.get_gridded_flux(dF)
+			gridflux += grid_fluxN*weightsN[season]+grid_fluxS*weightsS[season]
+
+		#Because we added together both hemispheres we now must divide everything by two
+		#to get the proper opposite season for other hemisphere weighting
+		gridflux *= .5
 
 		if hemi == 'S':
 			grid_mlats = -1.*grid_mlats #by default returns positive latitudes
