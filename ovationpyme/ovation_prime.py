@@ -32,13 +32,13 @@ class LatLocaltimeInterpolator(object):
 			raise ValueError('Latitude grid contains northern (N=%d) and southern (N=%d) values.' % (n_north,n_south)+\
 							' Can only interpolate one hemisphere at a time.')
 
-	def interpolate(self,new_mlat_grid,new_mlt_grid,method='linear'):
+	def interpolate(self,new_mlat_grid,new_mlt_grid,method='nearest'):
 		""" 
 		Rectangularize and Interpolate (using Linear 2D interpolation)
 		"""
 		X0,Y0 = satplottools.latlt2cart(self.mlat_orig.flatten(),self.mlt_orig.flatten(),self.hemisphere)
 		X,Y = satplottools.latlt2cart(new_mlat_grid.flatten(),new_mlt_grid.flatten(),self.hemisphere)
-		interpd_zvar = interpolate.griddata((X0,Y0),self.zvar.flatten(),(X,Y),method=method)
+		interpd_zvar = interpolate.griddata((X0,Y0),self.zvar.flatten(),(X,Y),method=method,fill_value=0.)
 		return interpd_zvar.reshape(new_mlat_grid.shape)
 
 class ConductanceEstimator(object):
@@ -139,17 +139,17 @@ class ConductanceEstimator(object):
    		sigp100 = sigp65-0.22*(100.-65.)
 
    		in_band = szas <= 65. 
-   		print "%d/%d Zenith Angles < 65" % (np.count_nonzero(in_band),len(in_band))
+   		#print "%d/%d Zenith Angles < 65" % (np.count_nonzero(in_band),len(in_band))
    		sigp[in_band] = .5*(f107*np.cos(szas_rad[in_band]))**(2./3)
    		sigh[in_band] = 1.8*np.sqrt(f107)*np.cos(szas_rad[in_band])
 
    		in_band = np.logical_and(szas >= 65.,szas < 100.)
-   		print "%d/%d Zenith Angles > 65 and < 100" % (np.count_nonzero(in_band),len(in_band)) 
+   		#print "%d/%d Zenith Angles > 65 and < 100" % (np.count_nonzero(in_band),len(in_band)) 
    		sigp[in_band] = sigp65-.22*(szas[in_band]-65.)
    		sigh[in_band] = sigh65-.27*(szas[in_band]-65.)
 
    		in_band = szas > 100.
-   		print "%d/%d Zenith Angles > 100" % (np.count_nonzero(in_band),len(in_band)) 
+   		#print "%d/%d Zenith Angles > 100" % (np.count_nonzero(in_band),len(in_band)) 
    		sigp[in_band] = sigp100-.13*(szas[in_band]-100.)
    		sigh[in_band] = sigh65-.27*(szas[in_band]-65.)
 
@@ -364,10 +364,10 @@ class SeasonalFluxEstimator(object):
 
 		with open(self.afile,'r') as f:
 			aheader = f.readline() # y0,d0,yend,dend,files_done,sf0
-			print "Read Auroral Flux Coefficient File %s,\n Header: %s" % (self.afile,aheader)
+			#print "Read Auroral Flux Coefficient File %s,\n Header: %s" % (self.afile,aheader)
 			# Don't know if it will read from where f pointer is after reading header line
 			adata = np.genfromtxt(f,max_rows=nmlat*nmlt)
-			print "First line was %s" % (str(adata[0,:]))
+			#print "First line was %s" % (str(adata[0,:]))
 
 		self.b1a, self.b2a = np.zeros((nmlt,nmlat)), np.zeros((nmlt,nmlat))
 		self.b1a.fill(np.nan)
@@ -614,9 +614,9 @@ class SeasonalFluxEstimator(object):
 				fluxgridN[i_mlat_bin,interp_bins_missing_flux] = flux_interp(this_mlt[interp_bins_missing_flux])
 
 				#print fluxgridN[i_mlat_bin,interp_bins_missing_flux]
-				print "For latitude %.1f, replaced %d flux bins between MLT %.1f and %.1f with interpolated flux..." % (this_mlat,
-					np.count_nonzero(interp_bins_missing_flux),np.nanmin(this_mlt[interp_bins_missing_flux]),
-					np.nanmax(this_mlt[interp_bins_missing_flux]))
+				#print "For latitude %.1f, replaced %d flux bins between MLT %.1f and %.1f with interpolated flux..." % (this_mlat,
+				#	np.count_nonzero(interp_bins_missing_flux),np.nanmin(this_mlt[interp_bins_missing_flux]),
+				#	np.nanmax(this_mlt[interp_bins_missing_flux]))
 
 		return fluxgridN,inwedge
 

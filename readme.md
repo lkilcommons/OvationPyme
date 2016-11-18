@@ -29,10 +29,12 @@ summer and southern activity in the winter). In OvationPyme, the seasonal weight
 DOY is done on both hemispheres seperately with the 
 southern hemisphere weighting calculated for DOY_S = 365-DOY, and then the hemispheres are combined. 
 
-## Future Features To Be Added (beyond IDL version):
-1. Estimated ionospheric height-integrated conductivity (conductance) using 
+2. Compute estimated ionospheric height-integrated conductivity (conductance) using 
 the technique used by Ellen Cousins et. al. (2015), which uses the Robinson emperical
-relationship mapping conductance to a function of total electron energy flux and average energy.
+relationship mapping conductance to a function of total electron energy flux and average energy, using
+Ovation's diffuse aurora.
+
+## Future Features To Be Added (beyond IDL version):
 2. Spatial numerical derivatives of conductance (derivatives in magnetic latitude and magnetic local time directions).
 
 ## Installation Instructions
