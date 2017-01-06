@@ -71,7 +71,7 @@ class ConductanceEstimator(object):
 		imatch = np.floor(self.omjd.flatten())==np.floor(jd)
 		return np.nanmean(self.omf107[imatch])
 
-	def get_conductance(self,dt,hemi='N',solar=True,auroral=True):
+	def get_conductance(self,dt,hemi='N',solar=True,auroral=True,background_p=None,background_h=None):
 		"""
 		Compute total conductance using Robinson formula and emperical solar conductance model
 		"""
@@ -90,6 +90,9 @@ class ConductanceEstimator(object):
 		sigp_auroral = 40.*eavg_grid/(16+eavg_grid**2) * np.sqrt(energyflux_grid)
 		sigh_auroral = 0.45*eavg_grid**0.85*sigp_auroral
 
+		#sigp_auroral *= 1.5
+		#sigh_auroral *= 1.5
+
 		if solar and not auroral:
 			sigp = sigp_solar
 			sigh = sigp_solar
@@ -99,7 +102,15 @@ class ConductanceEstimator(object):
 		else:
 			sigp = np.sqrt(sigp_solar**2+sigp_auroral**2)
 			sigh = np.sqrt(sigh_solar**2+sigh_auroral**2)
-			
+		
+		if background_h is not None and background_p is not None:
+			#Cousins et. al. 2015, nightside artificial background of 4 Siemens
+			#Ellen found this to be the background nightside conductance level which
+			#best optimizes the SuperDARN ElePot AMIE ability to predict AMPERE deltaB data, and
+			#the AMPERE MagPot AMIE ability to predict SuperDARN LOS V
+			sigp[sigp<background_p]=background_p
+			sigh[sigh<background_h]=background_h
+
 		return mlat_grid,mlt_grid,sigp,sigh
 
 	def solar_conductance(self,dt,mlats,mlts):
