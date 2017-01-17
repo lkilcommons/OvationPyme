@@ -437,7 +437,7 @@ class SeasonalFluxEstimator(object):
 		#Range check 0 <= i_dFbin <= n_dF_bins-1
 		if i_dFbin < 0 or i_dFbin > self.n_dF_bins-1: 
 			i_dFbin = 0 if i_dFbin < 0 else self.n_dF_bins-1
-		return i_dFbin
+		return int(i_dFbin)
 
 	def prob_estimate(self,dF,i_mlt_bin,i_mlat_bin):
 		"""
@@ -466,7 +466,7 @@ class SeasonalFluxEstimator(object):
 			i_dFbin = self.which_dF_bin(dF)
 			#Get the tabulated probability
 			p = self.prob[i_mlt_bin,i_mlat_bin,i_dFbin]
-			
+
 			if p == 0.:
 				#If no tabulated probability we must estimate by interpolating
 				#between adjacent coupling strength bins
