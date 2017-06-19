@@ -50,11 +50,14 @@ class ConductanceEstimator(object):
 	total electron energy flux 
 	(assumes a Maxwellian electron energy distribution)
 	"""
-	def __init__(self,start_dt,end_dt):
+	def __init__(self,start_dt,end_dt,fluxtypes=['diff','mono','wave']):
 		#Use diffuse aurora only
-		self.numflux_estimator = FluxEstimator('diff','electron number flux',start_dt=start_dt,end_dt=end_dt)
-		#self.energyflux_estimator = FluxEstimator('diff','electron energy flux',start_dt=start_dt,end_dt=end_dt)
-		self.eavg_estimator = FluxEstimator('diff','electron average energy',start_dt=start_dt,end_dt=end_dt)
+		self.numflux_estimator = {}
+		self.eavg_estimator = {}
+		for fluxtype in fluxtypes:
+			self.numflux_estimator[fluxtype] = FluxEstimator(fluxtype,'electron number flux',start_dt=start_dt,end_dt=end_dt)
+			#self.energyflux_estimator = FluxEstimator('diff','electron energy flux',start_dt=start_dt,end_dt=end_dt)
+			self.eavg_estimator[fluxtype] = FluxEstimator(fluxtype,'electron average energy',start_dt=start_dt,end_dt=end_dt)
 
 		#Need hourly omni data for F10.7
 		self.oi = geospacepy.omnireader.omni_interval(start_dt,end_dt,'hourly',silent=True) 
@@ -71,38 +74,60 @@ class ConductanceEstimator(object):
 		imatch = np.floor(self.omjd.flatten())==np.floor(jd)
 		return np.nanmean(self.omf107[imatch])
 
-	def get_conductance(self,dt,hemi='N',solar=True,auroral=True,background_p=None,background_h=None):
-		"""
-		Compute total conductance using Robinson formula and emperical solar conductance model
-		"""
-		mlat_grid,mlt_grid,numflux_grid = self.numflux_estimator.get_flux_for_time(dt,hemi=hemi)
-		#mlat_grid,mlt_grid,energyflux_grid = self.energyflux_estimator.get_flux_for_time(dt,hemi=hemi)
-		mlat_grid,mlt_grid,eavg_grid = self.eavg_estimator.get_flux_for_time(dt,hemi=hemi)
-
-		sigp_solar,sigh_solar =  self.solar_conductance(dt,mlat_grid,mlt_grid)
-
+	def robinson_formula(self,numflux_grid,eavg_grid):
 		#From E. Cousins IDL code
 		#Implement the Robinson formula
 		#Assume all of the particles come in at the average energy??
-
+		numflux_grid
+		
 		energyflux_grid = numflux_grid*1.6022e-9*eavg_grid #keV to ergs, * #/(cm^2 s)
 		#energyflux_grid *= 1.6022e-9
 		sigp_auroral = 40.*eavg_grid/(16+eavg_grid**2) * np.sqrt(energyflux_grid)
 		sigh_auroral = 0.45*eavg_grid**0.85*sigp_auroral
+		return sigp_auroral,sigh_auroral
 
-		#sigp_auroral *= 1.5
-		#sigh_auroral *= 1.5
+	def get_conductance(self,dt,hemi='N',solar=True,auroral=True,background_p=None,background_h=None,conductance_fluxtypes=['diff']):
+		"""
+		Compute total conductance using Robinson formula and emperical solar conductance model
+		"""
+		print "Getting conductance with solar %s, aurora %s, fluxtypes %s, background_ped: %s, background_hall %s" % (str(solar),
+			str(auroral),str(conductance_fluxtypes),str(background_p),str(background_h))
 
-		if solar and not auroral:
-			sigp = sigp_solar
-			sigh = sigp_solar
-		if auroral and not solar:
-			sigp = sigp_auroral
-			sigh = sigh_auroral
-		else:
-			sigp = np.sqrt(sigp_solar**2+sigp_auroral**2)
-			sigh = np.sqrt(sigh_solar**2+sigh_auroral**2)
+		all_sigp_auroral,all_sigh_auroral = [],[]
+		for fluxtype in conductance_fluxtypes:
+			mlat_grid,mlt_grid,numflux_grid = self.numflux_estimator[fluxtype].get_flux_for_time(dt,hemi=hemi)
+			#mlat_grid,mlt_grid,energyflux_grid = self.energyflux_estimator.get_flux_for_time(dt,hemi=hemi)
+			mlat_grid,mlt_grid,eavg_grid = self.eavg_estimator[fluxtype].get_flux_for_time(dt,hemi=hemi)
+			this_sigp_auroral,this_sigh_auroral = self.robinson_formula(numflux_grid,eavg_grid)
+			all_sigp_auroral.append(this_sigp_auroral)
+			all_sigh_auroral.append(this_sigh_auroral)
 		
+		sigp_solar,sigh_solar =  self.solar_conductance(dt,mlat_grid,mlt_grid)
+		total_sigp_sqrd = np.zeros_like(sigp_solar)
+		total_sigh_sqrd = np.zeros_like(sigh_solar)
+		
+		if solar:
+			total_sigp_sqrd += sigp_solar**2
+			total_sigh_sqrd += sigh_solar**2
+			
+		if auroral:
+			#Sum up all contributions (sqrt of summed squares)
+			for sigp_auroral,sigh_auroral in zip(all_sigp_auroral,all_sigh_auroral):
+				total_sigp_sqrd += sigp_auroral**2
+				total_sigh_sqrd += sigh_auroral**2
+
+			#sigp_auroral *= 1.5
+			#sigh_auroral *= 1.5
+
+		#Now take square root to get hall and pedersen conductance
+		if solar or auroral:
+			sigp = np.sqrt(total_sigp_sqrd)
+			sigh = np.sqrt(total_sigh_sqrd)
+		else:
+			#No conductance except flat background
+			sigp = total_sigp_sqrd
+			sigh = total_sigh_sqrd
+			
 		if background_h is not None and background_p is not None:
 			#Cousins et. al. 2015, nightside artificial background of 4 Siemens
 			#Ellen found this to be the background nightside conductance level which
@@ -131,7 +156,7 @@ class ConductanceEstimator(object):
 		#Find the closest hourly f107 value
 		#to the current time to specifiy the conductance
 		f107 = self.get_closest_f107(dt)
-		print "F10.7 = %f" % (f107)
+		#print "F10.7 = %f" % (f107)
 
 		#Convert from magnetic to geocentric using the AACGMv2 python library
  		flatmlats,flatmlts = mlats.flatten(),mlts.flatten()
@@ -252,8 +277,12 @@ class FluxEstimator(object):
 			weightsN = self.season_weights(doy)
 			weightsS = self.season_weights(365.-doy)
 		elif hemi=='S':
-			weightsN = self.season_weights(365.-doy)
-			weightsS = self.season_weights(doy)
+			weightsN = self.season_weights(doy)
+			weightsS = self.season_weights(365.-doy)
+			#This is already handled in the organization of the
+			#ptype datafiles (re Betsey Mitchell)- LMK, 6-15-2017
+			#weightsN = self.season_weights(365.-doy)
+			#weightsS = self.season_weights(doy)
 
 		avgsw = ovation_utilities.calc_avg_solarwind(dt,oi=self.oi)
 		dF = avgsw['Ec']
