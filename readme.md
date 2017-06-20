@@ -20,16 +20,8 @@ of Ionospheric Electrodynamics project (AMIEPy), and for the Python space scienc
 __Contributions and comments are very welcome__.
 
 ## Differences in this implementation compared to the IDL version
-1. I correct what I belive to be an oversight in how flux is averaged between
-the Northern and Southern hemispheres. In the original code, the hemispheres 
-were combined (mean) after the fluxes for the various seasons were averged using a weight
-appropriate to the day of the year the model was called for. This does not account for
-the inverse hemispheric response to a particular season (northern activity maximizes in the
-summer and southern activity in the winter). In OvationPyme, the seasonal weighting for day of year
-DOY is done on both hemispheres seperately with the 
-southern hemisphere weighting calculated for DOY_S = 365-DOY, and then the hemispheres are combined. 
 
-2. Compute estimated ionospheric height-integrated conductivity (conductance) using 
+1. Compute estimated ionospheric height-integrated conductivity (conductance) using 
 the technique used by Ellen Cousins et. al. (2015), which uses the Robinson emperical
 relationship mapping conductance to a function of total electron energy flux and average energy, using
 Ovation's diffuse aurora.
