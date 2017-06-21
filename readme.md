@@ -13,29 +13,22 @@ The original model was created by Patrick Newell et. al. (John Hopkins Applied P
 ## Provenance of this implementation
 Ovation Pyme is a complete translation of the IDL (a proprietary programming language,
 owned by ExelisVis) version used by NOAA, which was released in an open source format 
-[Sourceforge](https://sourceforge.net/projects/ovation-prime/) by Rob Redmon and Janet Machol
+[Sourceforge](https://sourceforge.net/projects/ovation-prime/) by Janet Machol et al.
 of NOAA National Center for Environmental Information (NCEI). 
 Liam Kilcommons created this software to support the Pythonification of the Assimiliative Mapping
 of Ionospheric Electrodynamics project (AMIEPy), and for the Python space science community. 
 __Contributions and comments are very welcome__.
 
 ## Differences in this implementation compared to the IDL version
-1. I correct what I belive to be an oversight in how flux is averaged between
-the Northern and Southern hemispheres. In the original code, the hemispheres 
-were combined (mean) after the fluxes for the various seasons were averged using a weight
-appropriate to the day of the year the model was called for. This does not account for
-the inverse hemispheric response to a particular season (northern activity maximizes in the
-summer and southern activity in the winter). In OvationPyme, the seasonal weighting for day of year
-DOY is done on both hemispheres seperately with the 
-southern hemisphere weighting calculated for DOY_S = 365-DOY, and then the hemispheres are combined. 
 
-2. Compute estimated ionospheric height-integrated conductivity (conductance) using 
+1. Compute estimated ionospheric height-integrated conductivity (conductance) using 
 the technique used by Ellen Cousins et. al. (2015), which uses the Robinson emperical
 relationship mapping conductance to a function of total electron energy flux and average energy, using
 Ovation's diffuse aurora.
+2. Interpolation of data to arbitrary latitude and longitude grids
 
 ## Future Features To Be Added (beyond IDL version):
-2. Spatial numerical derivatives of conductance (derivatives in magnetic latitude and magnetic local time directions).
+1. Spatial numerical derivatives of conductance (derivatives in magnetic latitude and magnetic local time directions).
 
 ## Verison Restrictions
 Use Python 2.7 (not 3) for the moment. Python 3 support is pending.
