@@ -41,7 +41,7 @@ Ovation's diffuse aurora.
 Use Python 2.7 (not 3) for the moment. Python 3 support is pending.
 
 ## Installation Instructions
-1. Clone or download the (geospacepy-lite)[https://github.com/lkilcommons/geospacepy-lite] library
+1. Clone or download the [geospacepy-lite](https://github.com/lkilcommons/geospacepy-lite) library
 2. Edit the OMNI data download path in geospacepy-lite file geospacepy-config.py
 3. From the geospacepy-lite directory: `python setup.py install`
 4. Clone or download the OvationPyme repostiory
