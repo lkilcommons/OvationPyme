@@ -37,9 +37,15 @@ Ovation's diffuse aurora.
 ## Future Features To Be Added (beyond IDL version):
 2. Spatial numerical derivatives of conductance (derivatives in magnetic latitude and magnetic local time directions).
 
+## Verison Restrictions
+Use Python 2.7 (not 3) for the moment. Python 3 support is pending.
+
 ## Installation Instructions
-1. Clone or download the repostiory
-2. `python setup.py install`
+1. Clone or download the (geospacepy-lite)[https://github.com/lkilcommons/geospacepy-lite] library
+2. Edit the OMNI data download path in geospacepy-lite file geospacepy-config.py
+3. From the geospacepy-lite directory: `python setup.py install`
+4. Clone or download the OvationPyme repostiory
+5. From the OvationPyme directory: `python setup.py install`
 
 ## Tests
 Unit tests are written for the py.test framework. If you have this installed,
