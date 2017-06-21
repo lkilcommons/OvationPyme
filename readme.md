@@ -13,7 +13,7 @@ The original model was created by Patrick Newell et. al. (John Hopkins Applied P
 ## Provenance of this implementation
 Ovation Pyme is a complete translation of the IDL (a proprietary programming language,
 owned by ExelisVis) version used by NOAA, which was released in an open source format 
-[Sourceforge](https://sourceforge.net/projects/ovation-prime/) by Janet Machol et al.
+[Sourceforge](https://sourceforge.net/projects/ovation-prime/) by Janet Machol, Rob Redmon and Nathan Case
 of NOAA National Center for Environmental Information (NCEI). 
 Liam Kilcommons created this software to support the Pythonification of the Assimiliative Mapping
 of Ionospheric Electrodynamics project (AMIEPy), and for the Python space science community. 
