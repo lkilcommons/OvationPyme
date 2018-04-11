@@ -10,7 +10,7 @@ from geospacepy import special_datetime,astrodynamics2,satplottools
 import geospacepy
 import os
 import aacgmv2 #available on pip
-import apexpy
+#import apexpy
 from scipy import interpolate
 
 #Determine where this module's source file is located
@@ -78,7 +78,6 @@ class ConductanceEstimator(object):
 		#From E. Cousins IDL code
 		#Implement the Robinson formula
 		#Assume all of the particles come in at the average energy??
-		numflux_grid
 		
 		energyflux_grid = numflux_grid*1.6022e-9*eavg_grid #keV to ergs, * #/(cm^2 s)
 		#energyflux_grid *= 1.6022e-9
