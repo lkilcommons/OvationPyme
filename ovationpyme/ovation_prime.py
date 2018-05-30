@@ -41,6 +41,98 @@ class LatLocaltimeInterpolator(object):
 		interpd_zvar = interpolate.griddata((X0,Y0),self.zvar.flatten(),(X,Y),method=method,fill_value=0.)
 		return interpd_zvar.reshape(new_mlat_grid.shape)
 
+class BinCorrector(object):
+	"""
+	We've found that often there are strange outlier bins that show up in
+	OvationPyme results. This attempts to identify them by computing a numerical
+	derivative around each ring of constant latitude.
+	"""
+	def __init__(self,mlat_grid,mlt_grid):
+		self.mlat_grid = mlat_grid
+		self.mlats = self.mlat_grid[:,0].flatten()
+		self.mlt_grid = mlt_grid
+		self.mlts = self.mlt_grid[0,:].flatten()
+		self.dy_thresh = None
+
+	def fix(self,y_grid,min_mlat=49,max_mlat=75,label=''):
+		"""Compute derivatives and attempt to identify bad bins
+		Assumes mlat varies along the first dimension of the gridded location
+		arrays
+		"""
+		import scipy.interpolate as interp
+		debug=False
+		plot=False
+		bad_bins = np.zeros_like(y_grid,dtype=bool)
+		y_grid_corr = y_grid.copy()
+		if self.dy_thresh is None:
+			self.dy_thresh = 3.*np.nanstd(np.diff(y_grid.flatten()))
+		wraparound = lambda x,nwrap: np.concatenate([x[-1*(nwrap+1):-1],
+														x,
+														x[:nwrap]])
+		for i_mlat,mlat in enumerate(self.mlats):
+			if not(np.abs(mlat)>=min_mlat and np.abs(mlat)<=max_mlat):
+				if debug:
+					print(('MLAT ring at %f mlat is not between' % (mlat)
+						  +' %f and %f' % (min_mlat,max_mlat)
+						  +' skipping'))
+				continue
+			mlts_nowrap = self.mlt_grid[i_mlat,:].copy()
+			mlts_nowrap[mlts_nowrap<0]+=24
+			mlts_nowrap[-1]=23.9
+			y = y_grid[i_mlat,:]
+			#Wrap around first and last nwarp indicies in MLT
+			#this prevents out of bounds errors in the spline/derviative
+			nwrap = 4 # Pchip is cubic so order+1
+			mlts = wraparound(mlts_nowrap,nwrap)
+			mlts[:nwrap] -= 24. #to keep mlt in increasing order
+			mlts[-1*nwrap:] += 24.
+			y = wraparound(y,nwrap)
+			#y_i = interp.PchipInterpolator(mlts,y)
+			dy = np.diff(np.concatenate([ y[:1] , y ])) # compute 1st derivative of spline
+			i_dy = interp.interp1d(mlts,dy,kind='nearest')
+			mlt_mask = np.ones_like(mlts,dtype=bool)
+			for i_mlt,mlt in enumerate(mlts_nowrap.flatten()):
+				if np.abs( i_dy(mlt) ) > self.dy_thresh:
+					bad_bins[i_mlat,i_mlt] = True
+					mlt_mask[i_mlt+nwrap] = False
+
+			y_corr_i = interp.PchipInterpolator(mlts[mlt_mask],y[mlt_mask])
+			y_corr = y_corr_i(mlts)
+			y_grid_corr[i_mlat,:] = y_corr_i(mlts_nowrap)
+			if plot:
+				self.plot_single_spline(mlat,mlts,
+										y,dy,mlt_mask,y_corr,label=label)
+
+		return y_grid_corr
+			
+	def plot_single_spline(self,mlat,mlts,
+								y,dy,mlt_mask,y_corr,label=''):
+		import matplotlib.pyplot as plt
+		import os
+		f = plt.figure(figsize=(8,6))
+		ax = f.add_subplot(111)
+		ax.plot(mlts,y,'bo',label='data')
+		ax.plot(mlts,dy,'r-',label='Deriv')	
+		bad_bins = np.logical_not(mlt_mask)
+		ax.plot(mlts,y_corr,'g.',label='After Correction')
+		ax.plot(mlts[bad_bins],y[bad_bins],'rx',
+			label='Bad@dy>%.1f' % (self.dy_thresh))
+		ax.set_title('Spline fit (mlat=%.1f)' % (mlat))
+		ax.set_xlabel('MLT')
+		ax.legend()
+		if not os.path.exists('/tmp/ovationpyme'):
+			os.makedirs('/tmp/ovationpyme')
+		f.savefig('/tmp/ovationpyme/ovationpyme_spline_%s_%d.png' % (
+														label,
+														np.floor(mlat*10)))
+		plt.close(f)
+
+	def __call__(self,y):
+		"""
+
+		"""
+		return self.fix(y)
+
 class ConductanceEstimator(object):
 	"""
 	Implements the 'Robinson Formula'
@@ -62,7 +154,31 @@ class ConductanceEstimator(object):
 		#Need hourly omni data for F10.7
 		self.oi = geospacepy.omnireader.omni_interval(start_dt,end_dt,'hourly',silent=True) 
 		self.omjd = special_datetime.datetimearr2jd(self.oi['Epoch'])
-		self.omf107 = self.oi['F10_INDEX']	
+		self.omf107 = self.oi['F10_INDEX']
+
+	"""
+	def remove_bad_bins(self,numflux,eavg,max_replace=10):
+		flat_nflux = numflux.flatten()
+		flat_eavg = eavg.flatten()
+		for i in range(max_replace):
+			i_max = np.nanargmax(flat_nflux)
+			flat_nflux[i_max]=np.nan
+			flat_eavg[i_max]=np.nan
+
+		#Calculate replacement values
+		rep_nflux = np.nanmax(flat_nflux)
+		i_replace = np.nanargmin(flat_nflux-rep_nflux)
+		rep_eavg = flat_eavg[i_replace]
+		#Find and replace any bind simultaneously about the rep values
+		bad_bins = np.logical_or(flat_nflux>rep_nflux,flat_eavg>rep_eavg)
+		flat_nflux[bad_bins] = rep_nflux
+		flat_eavg[bad_bins] = rep_eavg
+		fixed_numflux = flat_nflux.reshape(numflux.shape)
+		fixed_eavg = flat_eavg.reshape(eavg.shape)
+		print("Set %d bad bins to nflux %.2e eavg %.2f" % (np.count_nonzero(bad_bins),
+															rep_nflux,rep_eavg))
+		return fixed_numflux,fixed_eavg
+	"""
 
 	def get_closest_f107(self,dt):
 		"""
@@ -85,7 +201,11 @@ class ConductanceEstimator(object):
 		sigh_auroral = 0.45*eavg_grid**0.85*sigp_auroral
 		return sigp_auroral,sigh_auroral
 
-	def get_conductance(self,dt,hemi='N',solar=True,auroral=True,background_p=None,background_h=None,conductance_fluxtypes=['diff']):
+	def get_conductance(self,dt,hemi='N',solar=True,auroral=True,
+										background_p=None,background_h=None,
+										conductance_fluxtypes=['diff'],
+										interp_bad_bins=True,
+										return_dF=False):
 		"""
 		Compute total conductance using Robinson formula and emperical solar conductance model
 		"""
@@ -93,10 +213,33 @@ class ConductanceEstimator(object):
 			str(auroral),str(conductance_fluxtypes),str(background_p),str(background_h))
 
 		all_sigp_auroral,all_sigh_auroral = [],[]
+		#Create a bin interpolation corrector
 		for fluxtype in conductance_fluxtypes:
-			mlat_grid,mlt_grid,numflux_grid = self.numflux_estimator[fluxtype].get_flux_for_time(dt,hemi=hemi)
+			mlat_grid,mlt_grid,numflux_grid,dF = self.numflux_estimator[fluxtype].get_flux_for_time(dt,hemi=hemi,return_dF=True)
 			#mlat_grid,mlt_grid,energyflux_grid = self.energyflux_estimator.get_flux_for_time(dt,hemi=hemi)
 			mlat_grid,mlt_grid,eavg_grid = self.eavg_estimator[fluxtype].get_flux_for_time(dt,hemi=hemi)
+			
+			if interp_bad_bins:
+				#Clean up any extremely large bins
+				fixer = BinCorrector(mlat_grid,mlt_grid)
+				
+				#Fix numflux
+				fixer.dy_thresh = 1.0e8
+				numflux_grid = fixer.fix(numflux_grid,
+											label='nflux_%s' % (fluxtype))
+				#Fix avg energy
+				fixer.dy_thresh = .3
+				eavg_grid = fixer.fix(eavg_grid,
+											label='eavg_%s' % (fluxtype))
+
+				#zero out lowest latitude numflux row because it makes no sense
+				#has some kind of artefact at post midnight
+				bad = np.abs(mlat_grid) < 52.0 
+				numflux_grid[bad] = 0.
+
+				
+			#raise RuntimeError('Debug stop!')
+
 			this_sigp_auroral,this_sigh_auroral = self.robinson_formula(numflux_grid,eavg_grid)
 			all_sigp_auroral.append(this_sigp_auroral)
 			all_sigh_auroral.append(this_sigh_auroral)
@@ -135,7 +278,10 @@ class ConductanceEstimator(object):
 			sigp[sigp<background_p]=background_p
 			sigh[sigh<background_h]=background_h
 
-		return mlat_grid,mlt_grid,sigp,sigh
+		if return_dF:
+			return mlat_grid,mlt_grid,sigp,sigh,dF
+		else:
+			return mlat_grid,mlt_grid,sigp,sigh
 
 	def solar_conductance(self,dt,mlats,mlts):
 		"""
@@ -263,7 +409,7 @@ class FluxEstimator(object):
 			if not jtype_atype_ok:
 				raise RuntimeError('Auroral and flux type of SeasonalFluxEstimators do not match %s and %s!' % (self.atype,self.jtype))
 
-	def get_flux_for_time(self,dt,hemi='N'):
+	def get_flux_for_time(self,dt,hemi='N',return_dF=False):
 		"""
 		doy must be single value
 		mlats and mlts can be arbitary shape, but both must be same shape
@@ -301,7 +447,10 @@ class FluxEstimator(object):
 		if hemi == 'S':
 			grid_mlats = -1.*grid_mlats #by default returns positive latitudes
 
-		return grid_mlats,grid_mlts,gridflux
+		if not return_dF:
+			return grid_mlats,grid_mlts,gridflux
+		else:
+			return grid_mlats,grid_mlts,gridflux,dF
 
 	def season_weights(self,doy):
 		"""
@@ -596,6 +745,7 @@ class SeasonalFluxEstimator(object):
 
 		if interp_N:
 			fluxgridN,inwedge = self.interp_wedge(mlatgridN,mltgridN,fluxgridN)
+			self.inwedge = inwedge
 
 		if not combined_N_and_S:
 			return mlatgridN,mltgridN,fluxgridN,mlatgridS,mltgridS,fluxgridS
@@ -614,7 +764,8 @@ class SeasonalFluxEstimator(object):
 		#Constants copied verbatim from IDL code
 		x_mlt_min=-1.0   #minimum MLT for interpolation [hours] --change if desired
 		x_mlt_max=4.0    #maximum MLT for interpolation [hours] --change if desired
-		x_mlat_min=50.0  #minimum MLAT for interpolation [degrees]
+		x_mlat_min=49.0  #minimum MLAT for interpolation [degrees]
+		#x_mlat_max=67.0
 		x_mlat_max=75.0  #maximum MLAT for interpolation [degrees] --change if desired (LMK increased this from 67->75)
 
 		valid_interp_mlat_bins = np.logical_and(mlatgridN[:,0]>=x_mlat_min,mlatgridN[:,0]<=x_mlat_max).flatten()
@@ -632,7 +783,9 @@ class SeasonalFluxEstimator(object):
 
 			valid_interp_mlt_bins = np.logical_and(this_mlt>=x_mlt_min,this_mlt<=x_mlt_max).flatten()
 			mlt_bins_missing_flux = np.logical_not(this_flux>0.).flatten()
+			
 			interp_bins_missing_flux = np.logical_and(valid_interp_mlt_bins,mlt_bins_missing_flux)
+
 			inwedge[i_mlat_bin,:] = interp_bins_missing_flux
 
 			if np.count_nonzero(interp_bins_missing_flux) > 0:
@@ -640,7 +793,7 @@ class SeasonalFluxEstimator(object):
 				#Bins right next to missing wedge probably have bad statistics, so
 				#don't include them
 				interp_bins_missing_flux_inds = np.flatnonzero(interp_bins_missing_flux)
-				nedge=1
+				nedge=6
 				for edge_offset in range(1,nedge+1):
 					lower_edge_ind = interp_bins_missing_flux_inds[0]-edge_offset
 					upper_edge_ind = np.mod(interp_bins_missing_flux_inds[-1]+edge_offset,len(interp_bins_missing_flux))
@@ -649,13 +802,18 @@ class SeasonalFluxEstimator(object):
 					
 				interp_source_bins = np.flatnonzero(np.logical_not(interp_bins_missing_flux))
 
-				flux_interp = interpolate.interp1d(this_mlt[interp_source_bins],this_flux[interp_source_bins],'slinear')
+				#flux_interp = interpolate.PchipInterpolator(this_mlt[interp_source_bins],this_flux[interp_source_bins])
+				flux_interp = interpolate.interp1d(this_mlt[interp_source_bins],this_flux[interp_source_bins],kind='linear')
 				fluxgridN[i_mlat_bin,interp_bins_missing_flux] = flux_interp(this_mlt[interp_bins_missing_flux])
 
 				#print fluxgridN[i_mlat_bin,interp_bins_missing_flux]
 				#print "For latitude %.1f, replaced %d flux bins between MLT %.1f and %.1f with interpolated flux..." % (this_mlat,
 				#	np.count_nonzero(interp_bins_missing_flux),np.nanmin(this_mlt[interp_bins_missing_flux]),
 				#	np.nanmax(this_mlt[interp_bins_missing_flux]))
+
+		#notwedge = np.logical_not(inwedge)
+		#crazy = np.logical_and(inwedge,fluxgridN>np.nanpercentile(fluxgridN[notwedge],90.))
+		#fluxgridN[crazy]=np.nanpercentile(fluxgridN[notwedge],90.)
 
 		return fluxgridN,inwedge
 
