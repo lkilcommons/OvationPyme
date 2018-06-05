@@ -307,7 +307,7 @@ class ConductanceEstimator(object):
  		flatmlats,flatmlts = mlats.flatten(),mlts.flatten()
  		#flatmlons = (flatmlts-zero_lon_mlt)/12*180.
 		flatmlons = aacgmv2.convert_mlt(flatmlts,dt,m2a=True)
-		glats,glons = aacgmv2.convert(np.abs(flatmlats),flatmlons,110.*np.ones_like(flatmlats),
+		glats,glons = aacgmv2.convert(flatmlats,flatmlons,110.*np.ones_like(flatmlats),
 										date=dt,a2g=True,geocentric=False)
 		szas = astrodynamics2.solar_zenith_angle(dt,glats,glons)
 		szas_rad = szas/180.*np.pi
