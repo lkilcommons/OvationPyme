@@ -212,8 +212,8 @@ class ConductanceEstimator(object):
 		"""
 		Compute total conductance using Robinson formula and emperical solar conductance model
 		"""
-		print "Getting conductance with solar %s, aurora %s, fluxtypes %s, background_ped: %s, background_hall %s" % (str(solar),
-			str(auroral),str(conductance_fluxtypes),str(background_p),str(background_h))
+		print("Getting conductance with solar %s, aurora %s, fluxtypes %s, background_ped: %s, background_hall %s" % (str(solar),
+			str(auroral),str(conductance_fluxtypes),str(background_p),str(background_h)))
 
 		all_sigp_auroral,all_sigh_auroral = [],[]
 		#Create a bin interpolation corrector
@@ -423,7 +423,7 @@ class FluxEstimator(object):
 			self.seasonal_flux_estimators = {season:SeasonalFluxEstimator(season,atype,jtype) for season in seasons}				
 		else:
 			#Ensure the passed seasonal estimators are approriate for this atype and jtype
-			for season,estimator in seasonal_flux_estimators.iteritems():
+			for season,estimator in seasonal_flux_estimators.items():
 				jtype_atype_ok = jtype_atype_ok and (self.jtype == estimator.jtype and self.atype == estimator.atype)
 			if not jtype_atype_ok:
 				raise RuntimeError('Auroral and flux type of SeasonalFluxEstimators do not match %s and %s!' % (self.atype,self.jtype))
@@ -660,9 +660,15 @@ class SeasonalFluxEstimator(object):
 			for idF in range(ndF):
 				self.prob[mlt_bin_inds,mlat_bin_inds,idF]=pdata_p_column_dFbin[:,idF]
 
+<<<<<<< HEAD
 			# if season=='spring' and atype=='diff' and jtype=='electron energy flux':
 			# 	print self.b1p[22:26,138:142]
 			# 	print self.prob[22:26,138:142,5]
+=======
+			if season=='spring' and atype=='diff' and jtype=='electron energy flux':
+				print(self.b1p[22:26,138:142])
+				print(self.prob[22:26,138:142,5])
+>>>>>>> 5475fd7... Python 3 compatibility: Committing changes from 2to3
 
 		#IDL original read
 		#readf,20,i,j,b1,b2,rF

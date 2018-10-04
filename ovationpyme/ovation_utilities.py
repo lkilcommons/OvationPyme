@@ -39,8 +39,8 @@ def calc_avg_solarwind(dt,oi=None):
 	i_first = np.nanargmin(np.abs(om_jd-jd))
 	
 	#Get indicies of all data in the average
-	om_in_avg = range(i_first-n_hours,i_first+1)
-	weights = [prev_hour_weight*n_hours_back for n_hours_back in reversed(range(n_hours+1))] #reverse the list
+	om_in_avg = list(range(i_first-n_hours,i_first+1))
+	weights = [prev_hour_weight*n_hours_back for n_hours_back in reversed(list(range(n_hours+1)))] #reverse the list
 	
 	#Calculate weighted averages
 	avgsw = dict()
