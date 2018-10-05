@@ -423,7 +423,7 @@ class FluxEstimator(object):
                 avgsw = ovation_utilities.calc_avg_solarwind(dt,oi=self.oi)
                 dF = avgsw['Ec']
                 seasonal_flux = {}
-                n_mlat_bins = list(self.seasonal_flux_estimators.items())[0][1].n_mlat_bins/2 #div by 2 because combined N&S hemispheres
+                n_mlat_bins = list(self.seasonal_flux_estimators.items())[0][1].n_mlat_bins//2 #div by 2 because combined N&S hemispheres
                 n_mlt_bins = list(self.seasonal_flux_estimators.items())[0][1].n_mlt_bins
                 gridflux = np.zeros((n_mlat_bins,n_mlt_bins))
                 for season in weightsN:
@@ -514,8 +514,8 @@ class SeasonalFluxEstimator(object):
                 self.n_mlt_bins,self.n_mlat_bins,self.n_dF_bins = nmlt,nmlat,ndF
 
                 #The mlat bins are orgainized like -50:-dlat:-90,50:dlat:90
-                self.mlats = np.concatenate([np.linspace(-90.,-50.,self.n_mlat_bins/2)[::-1],
-                                                                                        np.linspace(50.,90.,self.n_mlat_bins/2)])
+                self.mlats = np.concatenate([np.linspace(-90.,-50.,self.n_mlat_bins//2)[::-1],
+                                                                                        np.linspace(50.,90.,self.n_mlat_bins//2)])
 
                 self.mlts = np.linspace(0.,24.,self.n_mlt_bins)
 
@@ -717,21 +717,21 @@ class SeasonalFluxEstimator(object):
 
                 """
 
-                fluxgridN = np.zeros((self.n_mlat_bins/2,self.n_mlt_bins))
+                fluxgridN = np.zeros((self.n_mlat_bins//2,self.n_mlt_bins))
                 fluxgridN.fill(np.nan)
                 #Make grid coordinates
-                mlatgridN,mltgridN = np.meshgrid(self.mlats[self.n_mlat_bins/2:],self.mlts,indexing='ij')
+                mlatgridN,mltgridN = np.meshgrid(self.mlats[self.n_mlat_bins//2:],self.mlts,indexing='ij')
                 
-                fluxgridS = np.zeros((self.n_mlat_bins/2,self.n_mlt_bins))
+                fluxgridS = np.zeros((self.n_mlat_bins//2,self.n_mlt_bins))
                 fluxgridS.fill(np.nan)
                 #Make grid coordinates
-                mlatgridS,mltgridS = np.meshgrid(self.mlats[:self.n_mlat_bins/2],self.mlts,indexing='ij')
-                #print self.mlats[:self.n_mlat_bins/2]
+                mlatgridS,mltgridS = np.meshgrid(self.mlats[:self.n_mlat_bins//2],self.mlts,indexing='ij')
+                #print self.mlats[:self.n_mlat_bins//2]
                 
                 for i_mlt in range(self.n_mlt_bins):
-                        for j_mlat in range(self.n_mlat_bins/2):
+                        for j_mlat in range(self.n_mlat_bins//2):
                                 #The mlat bins are orgainized like -50:-dlat:-90,50:dlat:90
-                                fluxgridN[j_mlat,i_mlt] = self.estimate_auroral_flux(dF,i_mlt,self.n_mlat_bins/2+j_mlat)
+                                fluxgridN[j_mlat,i_mlt] = self.estimate_auroral_flux(dF,i_mlt,self.n_mlat_bins//2+j_mlat)
                                 fluxgridS[j_mlat,i_mlt] = self.estimate_auroral_flux(dF,i_mlt,j_mlat)
 
                 if interp_N:
