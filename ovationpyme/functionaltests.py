@@ -201,11 +201,13 @@ if __name__ == '__main__':
 		f1 = draw_weighted_flux(dt)
 		f1.savefig('ovation_combflux_%s_%s_%s.png' % (atype,jtype.replace(' ','_'),dt.strftime(tfmt)))
 
-		f3,f4 = draw_seasonal_flux(seasonN=seasonN,seasonS=seasonS,atype=atype,jtype=jtype)
-		
-		f3.savefig('ovation_rawflux_N%s_S%s_%s_%s.png' % (seasonN,seasonS,atype,jtype.replace(' ','_')))
+		f3,f4 = draw_seasonal_flux(seasonN=seasonN,seasonS=seasonS,atype='diff',jtype=jtype)
+		f3.savefig('ovation_rawflux_N%s_S%s_%s_%s.png' % (seasonN,seasonS,'diff',jtype.replace(' ','_')))
 
-		for f in [fiN,fiS,f2N,f2S,f1,f3,f4]:
+		f5,f6 = draw_seasonal_flux(seasonN=seasonN,seasonS=seasonS,atype='mono',jtype=jtype)
+		f5.savefig('ovation_rawflux_N%s_S%s_%s_%s.png' % (seasonN,seasonS,'mono',jtype.replace(' ','_')))
+
+		for f in [fiN,fiS,f2N,f2S,f1,f3,f4,f5,f6]:
 			pp.close(f)
 
 		

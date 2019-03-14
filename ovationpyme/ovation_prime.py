@@ -95,14 +95,14 @@ class BinCorrector(object):
 				if np.abs( i_dy(mlt) ) > self.dy_thresh:
 					bad_bins[i_mlat,i_mlt] = True
 					mlt_mask[i_mlt+nwrap] = False
-
 			y_corr_i = interp.PchipInterpolator(mlts[mlt_mask],y[mlt_mask])
 			y_corr = y_corr_i(mlts)
 			y_grid_corr[i_mlat,:] = y_corr_i(mlts_nowrap)
 			if plot:
 				self.plot_single_spline(mlat,mlts,
 										y,dy,mlt_mask,y_corr,label=label)
-
+		n_bad = len(np.flatnonzero(bad_bins))
+		print('Bincorrect removed %d bad bins' % (n_bad))
 		return y_grid_corr
 			
 	def plot_single_spline(self,mlat,mlts,
