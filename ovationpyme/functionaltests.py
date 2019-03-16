@@ -116,9 +116,7 @@ def draw_weighted_flux(dt,atype='diff',jtype='electron energy flux'):
 																							fontweight='bold')
 	return f
 
-def draw_seasonal_flux(seasonN='summer',seasonS='winter',atype='diff',jtype='electron energy flux'):
-
-	dF = 2134.17
+def draw_seasonal_flux(seasonN='summer',seasonS='winter',atype='diff',jtype='electron energy flux',dF = 2134.17):
 
 	estimatorN = ovation_prime.SeasonalFluxEstimator(seasonN,atype,jtype)
 	estimatorS = ovation_prime.SeasonalFluxEstimator(seasonS,atype,jtype)

@@ -409,40 +409,84 @@ class FluxEstimator(object):
 			if not jtype_atype_ok:
 				raise RuntimeError('Auroral and flux type of SeasonalFluxEstimators do not match %s and %s!' % (self.atype,self.jtype))
 
-	def get_flux_for_time(self,dt,hemi='N',return_dF=False):
+	def get_season_fluxes(self,dF):
 		"""
-		doy must be single value
-		mlats and mlts can be arbitary shape, but both must be same shape
+		Extract the flux for each season and hemisphere and
+		store them in a dictionary
+		Return positive latitudes, since northern and southern
+		latitude/localtime grids are the same
+		"""
+		seasonfluxesN,seasonfluxesS = {},{}
+		gridmlats,gridmlts = None,None
+		for season,estimator in self.seasonal_flux_estimators.iteritems():
+			flux_outs = estimator.get_gridded_flux(dF)
+			gridmlatsN,gridmltsN,gridfluxN = flux_outs[:3]
+			gridmlatsS,gridmltsS,gridfluxS = flux_outs[3:]
+			seasonfluxesN[season]=gridfluxN
+			seasonfluxesS[season]=gridfluxS
+			gridmlats = gridmlatsN
+			gridmlts = gridmltsN
+		return gridmlats,gridmlts,seasonfluxesN,seasonfluxesS
+
+	def get_flux_for_time(self,dt,
+							hemi='N',return_dF=False,combine_hemispheres=True):
+		"""
+		The weighting of the seasonal flux for the different hemispheres
+		is a bit counterintuitive, but after some investigation of the flux
+		patterns produced for Northern and Southern hemispheres using a
+		particular SeasonalFluxEstimator (which in turn reads a particular
+		season's coefficients file), it seems like the 'summer' coefficients 
+		file contains the northern hemisphere coefficients for Boreal Summer
+		(roughly May-August) and the southern hemisphere coefficients for 
+		Austral Summer (roughly November-February).
+
+		In earlier versions of this code, the season weighting was wrong, 
+		because the code operated on the assumption that 'summer'
+		meant Boreal summer, and specified a range of dates for the data
+		used to construct the coefficients.
+
+		In the IDL version of this model, the flux produced for
+		Northern and Southern hemispheres is averaged, with the following
+		comment on the IDL keyword argument:
+
+		;n_or_s=3 for combine north and south.  In effect this is the only
+		;option that works.  The result is appropriate to the northern
+		;hemisphere.  To get a result appropriate to the southern hemisphere,
+		;call with doy = 365 - actual doy
+
+		Combining hemispheres is probably nessecary because
+		there are data gaps (particularly in the northern hemisphere dawn)
+		so this is the default behavior here as well. This can be overriden
+		by passing combine_hemispheres=False
 		"""
 		doy = dt.timetuple().tm_yday
-		#if hemi == 'S':
-		#	doy = 365.-doy #Use opposite season coefficients to get southern hemisphere results
+		
+		if not combine_hemispheres:
+			print(('Warning: IDL version of OP2010 always combines hemispheres.'
+				  +'know what you are doing before switching this behavior'))
 
 		if hemi=='N':
-			weightsN = self.season_weights(doy)
-			weightsS = self.season_weights(365.-doy)
+			weights = self.season_weights(doy)
 		elif hemi=='S':
-			weightsN = self.season_weights(doy)
-			weightsS = self.season_weights(365.-doy)
-			#This is already handled in the organization of the
-			#ptype datafiles (re Betsey Mitchell)- LMK, 6-15-2017
-			#weightsN = self.season_weights(365.-doy)
-			#weightsS = self.season_weights(doy)
+			weights = self.season_weights(365.-doy)
+		else:
+			raise ValueError('Invalid hemisphere %s (use N or S)' % (hemi))
 
 		avgsw = ovation_utilities.calc_avg_solarwind(dt,oi=self.oi)
-		dF = avgsw['Ec']
-		seasonal_flux = {}
-		n_mlat_bins = self.seasonal_flux_estimators.items()[0][1].n_mlat_bins/2 #div by 2 because combined N&S hemispheres
-		n_mlt_bins = self.seasonal_flux_estimators.items()[0][1].n_mlt_bins
-		gridflux = np.zeros((n_mlat_bins,n_mlt_bins))
-		for season in weightsN:
-			flux_estimator = self.seasonal_flux_estimators[season]
-			grid_mlats,grid_mlts,grid_fluxN,gridmlatsS,grid_mltsS,grid_fluxS = flux_estimator.get_gridded_flux(dF)
-			gridflux += grid_fluxN*weightsN[season]+grid_fluxS*weightsS[season]
+		dF = avgsw['Ec'] #Newell coupling
+		
+		season_fluxes_outs = self.get_season_fluxes(dF)	
+		grid_mlats,grid_mlts,seasonfluxesN,seasonfluxesS = season_fluxes_outs
 
-		#Because we added together both hemispheres we now must divide everything by two
-		#to get the proper opposite season for other hemisphere weighting
-		gridflux *= .5
+		gridflux = np.zeros_like(seasonfluxesN['summer']) 
+		for season,W in weights.iteritems():
+			gridfluxN,gridfluxS = seasonfluxesN[season],seasonfluxesS[season]
+			if combine_hemispheres:
+				gridflux += W*(gridfluxN+gridfluxS)/2
+			elif hemi=='N':
+				gridflux += W*gridfluxN
+			elif hemi=='S':
+				gridflux += W*gridfluxS
 
 		if hemi == 'S':
 			grid_mlats = -1.*grid_mlats #by default returns positive latitudes
@@ -591,9 +635,9 @@ class SeasonalFluxEstimator(object):
 			for idF in range(ndF):
 				self.prob[mlt_bin_inds,mlat_bin_inds,idF]=pdata_p_column_dFbin[:,idF]
 
-			if season=='spring' and atype=='diff' and jtype=='electron energy flux':
-				print self.b1p[22:26,138:142]
-				print self.prob[22:26,138:142,5]
+			# if season=='spring' and atype=='diff' and jtype=='electron energy flux':
+			# 	print self.b1p[22:26,138:142]
+			# 	print self.prob[22:26,138:142,5]
 
 		#IDL original read
 		#readf,20,i,j,b1,b2,rF
