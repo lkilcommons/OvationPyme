@@ -205,7 +205,10 @@ class ConductanceEstimator(object):
 										background_p=None,background_h=None,
 										conductance_fluxtypes=['diff'],
 										interp_bad_bins=True,
-										return_dF=False):
+										return_dF=False,
+										return_f107=False,
+										dnflux_bad_thresh=1.0e8,
+										deavg_bad_thresh=.3):
 		"""
 		Compute total conductance using Robinson formula and emperical solar conductance model
 		"""
@@ -224,17 +227,17 @@ class ConductanceEstimator(object):
 				fixer = BinCorrector(mlat_grid,mlt_grid)
 				
 				#Fix numflux
-				fixer.dy_thresh = 1.0e8
+				fixer.dy_thresh = dnflux_bad_thresh
 				numflux_grid = fixer.fix(numflux_grid,
 											label='nflux_%s' % (fluxtype))
 				#Fix avg energy
-				fixer.dy_thresh = .3
+				fixer.dy_thresh = deavg_bad_thresh
 				eavg_grid = fixer.fix(eavg_grid,
 											label='eavg_%s' % (fluxtype))
 
 				#zero out lowest latitude numflux row because it makes no sense
 				#has some kind of artefact at post midnight
-				bad = np.abs(mlat_grid) < 52.0 
+				bad = np.abs(mlat_grid) < 52.0
 				numflux_grid[bad] = 0.
 
 				
@@ -244,7 +247,9 @@ class ConductanceEstimator(object):
 			all_sigp_auroral.append(this_sigp_auroral)
 			all_sigh_auroral.append(this_sigh_auroral)
 		
-		sigp_solar,sigh_solar =  self.solar_conductance(dt,mlat_grid,mlt_grid)
+		sigp_solar,sigh_solar,f107 =  self.solar_conductance(dt,
+															mlat_grid,mlt_grid,
+															return_f107=True)
 		total_sigp_sqrd = np.zeros_like(sigp_solar)
 		total_sigh_sqrd = np.zeros_like(sigh_solar)
 		
@@ -278,12 +283,16 @@ class ConductanceEstimator(object):
 			sigp[sigp<background_p]=background_p
 			sigh[sigh<background_h]=background_h
 
-		if return_dF:
+		if return_dF and return_f107:
+			return mlat_grid,mlt_grid,sigp,sigh,dF,f107
+		elif return_dF:
 			return mlat_grid,mlt_grid,sigp,sigh,dF
+		elif return_f107:
+			return mlat_grid,mlt_grid,sigp,sigh,f107
 		else:
 			return mlat_grid,mlt_grid,sigp,sigh
 
-	def solar_conductance(self,dt,mlats,mlts):
+	def solar_conductance(self,dt,mlats,mlts,return_f107=False):
 		"""
 		Estimate the solar conductance using methods from:
 		
@@ -301,6 +310,13 @@ class ConductanceEstimator(object):
 		#Find the closest hourly f107 value
 		#to the current time to specifiy the conductance
 		f107 = self.get_closest_f107(dt)
+		if hasattr(self,'_f107'):
+			print(('Warning: Overriding real F107 %.1f' % (f107)
+				   +'with secret instance property _f107 %.1f' % (self._f107)
+				   +'this is for debugging and will not'
+				   +'produce accurate results for a particular date.'))
+			f107 = self._f107
+
 		#print "F10.7 = %f" % (f107)
 
 		#Convert from magnetic to geocentric using the AACGMv2 python library
@@ -348,7 +364,10 @@ class ConductanceEstimator(object):
    		sigp_unflat = sigp.reshape(mlats.shape)
    		sigh_unflat = sigh.reshape(mlats.shape)
 
-   		return sigp_unflat,sigh_unflat
+   		if return_f107:
+			return sigp_unflat,sigh_unflat,f107
+		else:
+			return sigp_unflat,sigh_unflat
 
 class FluxEstimator(object):
 	"""
@@ -474,6 +493,12 @@ class FluxEstimator(object):
 
 		avgsw = ovation_utilities.calc_avg_solarwind(dt,oi=self.oi)
 		dF = avgsw['Ec'] #Newell coupling
+		if hasattr(self,'_dF'):
+			print(('Warning: Overriding real Newell Coupling %.1f' % (dF)
+				   +'with secret instance property _dF %.1f' % (self._dF)
+				   +'this is for debugging and will not'
+				   +'produce accurate results for a particular date'))
+			dF = self._dF
 		
 		season_fluxes_outs = self.get_season_fluxes(dF)	
 		grid_mlats,grid_mlts,seasonfluxesN,seasonfluxesS = season_fluxes_outs
