@@ -31,7 +31,7 @@ Ovation's diffuse aurora.
 1. Spatial numerical derivatives of conductance (derivatives in magnetic latitude and magnetic local time directions).
 
 ## Verison Restrictions
-Use Python versions >= 2.7
+Use Python 2.7 (not 3) for the moment. Python 3 support is pending.
 
 ## Installation Instructions
 1. Clone or download the [geospacepy-lite](https://github.com/lkilcommons/geospacepy-lite) library

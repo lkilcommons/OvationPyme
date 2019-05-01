@@ -1,3 +1,3 @@
-from . import ovation_prime
-from . import ovation_utilities
-from . import ovation_plotting
+import ovation_prime
+import ovation_utilities
+import ovation_plotting
