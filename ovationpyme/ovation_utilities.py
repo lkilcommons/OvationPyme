@@ -7,7 +7,6 @@ import numpy as np
 
 from geospacepy import omnireader, special_datetime
 
-
 def calc_avg_solarwind(dt, oi=None):
     """
     Calculates a weighted average of several
@@ -54,7 +53,6 @@ def calc_avg_solarwind(dt, oi=None):
     avgsw['Ec'] = np.nansum(Ec[om_in_avg]*weights)/len(om_in_avg)
 
     return avgsw
-
 
 def calc_coupling(Bx, By, Bz, V):
     """

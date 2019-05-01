@@ -26,6 +26,7 @@ class LatLocaltimeInterpolator(object):
         self.mlt_orig = mlt_grid
         self.zvar = var
         n_north, n_south = np.count_nonzero(self.mlat_orig>0.), np.count_nonzero(self.mlat_orig<0.)
+
         if n_south == 0.:
             self.hemisphere = 'N'
         elif n_north == 0.:
@@ -130,7 +131,6 @@ class BinCorrector(object):
         """
         return self.fix(y)
 
-
 class ConductanceEstimator(object):
     """
     Implements the 'Robinson Formula'
@@ -141,6 +141,7 @@ class ConductanceEstimator(object):
     (assumes a Maxwellian electron energy distribution)
     """
     def __init__(self, start_dt, end_dt, fluxtypes=['diff', 'mono', 'wave']):
+
         #Use diffuse aurora only
         self.numflux_estimator = {}
         self.eavg_estimator = {}
@@ -190,7 +191,6 @@ class ConductanceEstimator(object):
         #From E. Cousins IDL code
         #Implement the Robinson formula
         #Assume all of the particles come in at the average energy??
-
         energyflux_grid = numflux_grid*1.6022e-9*eavg_grid #keV to ergs, * #/(cm^2 s)
         #energyflux_grid *= 1.6022e-9
         sigp_auroral = 40.*eavg_grid/(16+eavg_grid**2) * np.sqrt(energyflux_grid)
@@ -198,7 +198,9 @@ class ConductanceEstimator(object):
         return sigp_auroral, sigh_auroral
 
     def get_conductance(self, dt, hemi='N', solar=True, auroral=True,  background_p=None, background_h=None,
-                        conductance_fluxtypes=['diff'], interp_bad_bins=True, return_dF=False):
+                        conductance_fluxtypes=['diff'], interp_bad_bins=True, 
+                        return_dF=False, return_f107=False,
+                        dnflux_bad_thresh=1.0e8, deavg_bad_thresh=.3):
         """
         Compute total conductance using Robinson formula and emperical solar conductance model
         """
@@ -217,11 +219,11 @@ class ConductanceEstimator(object):
                 fixer = BinCorrector(mlat_grid, mlt_grid)
 
                 #Fix numflux
-                fixer.dy_thresh = 1.0e8
+                fixer.dy_thresh = dnflux_bad_thresh
                 numflux_grid = fixer.fix(numflux_grid, label='nflux_{0}'.format(fluxtype))
 
                 #Fix avg energy
-                fixer.dy_thresh = .3
+                fixer.dy_thresh = deavg_bad_thresh
                 eavg_grid = fixer.fix(eavg_grid, label='eavg_{0}'.format(fluxtype))
 
                 #zero out lowest latitude numflux row because it makes no sense
@@ -248,7 +250,6 @@ class ConductanceEstimator(object):
             for sigp_auroral, sigh_auroral in zip(all_sigp_auroral, all_sigh_auroral):
                     total_sigp_sqrd += sigp_auroral**2
                     total_sigh_sqrd += sigh_auroral**2
-
             #sigp_auroral *= 1.5
             #sigh_auroral *= 1.5
 
@@ -269,8 +270,12 @@ class ConductanceEstimator(object):
             sigp[sigp<background_p]=background_p
             sigh[sigh<background_h]=background_h
 
-        if return_dF:
+        if return_dF and return_f107:
+            return mlat_grid, mlt_grid, sigp, sigh, dF, f107
+        elif return_dF:
             return mlat_grid, mlt_grid, sigp, sigh, dF
+        elif return_f107:
+            return mlat_grid, mlt_grid, sigp, sigh, f107
         else:
             return mlat_grid, mlt_grid, sigp, sigh
 
@@ -291,36 +296,42 @@ class ConductanceEstimator(object):
         #Find the closest hourly f107 value
         #to the current time to specifiy the conductance
         f107 = self.get_closest_f107(dt)
-        #print "F10.7 = {0}".format(f107)
+        if hasattr(self,'_f107'):
+            print(('Warning: Overriding real F107 {0}'.format(f107)
+                   +'with secret instance property _f107 {0}'.format(self._f107)
+                   +'this is for debugging and will not'
+                   +'produce accurate results for a particular date.'))
+            f107 = self._f107
+
+        #print "F10.7 = %f" % (f107)
 
         #Convert from magnetic to geocentric using the AACGMv2 python library
-        flatmlats, flatmlts = mlats.flatten(), mlts.flatten()
+        flatmlats,flatmlts = mlats.flatten(),mlts.flatten()
         #flatmlons = (flatmlts-zero_lon_mlt)/12*180.
         flatmlons = aacgmv2.convert_mlt(flatmlts, dt, m2a=True)
-        glats, glons = aacgmv2.convert(flatmlats, flatmlons, 110.*np.ones_like(flatmlats),
-                                                                        date=dt, a2g=True, geocentric=False)
+        glats,glons = aacgmv2.convert(flatmlats, flatmlons, 110.*np.ones_like(flatmlats),
+                                                                date=dt, a2g=True, geocentric=False)
         szas = astrodynamics2.solar_zenith_angle(dt, glats, glons)
         szas_rad = szas/180.*np.pi
 
-        sigp, sigh = np.zeros_like(glats), np.zeros_like(glats)
+        sigp,sigh = np.zeros_like(glats),np.zeros_like(glats)
 
         cos65 = np.cos(65/180.*np.pi)
         sigp65  = .5*(f107*cos65)**(2./3)
         sigh65  = 1.8*np.sqrt(f107)*cos65
         sigp100 = sigp65-0.22*(100.-65.)
 
-        in_band = szas <= 65.
-        #print "%d/%d Zenith Angles < 65" % (np.count_nonzero(in_band), len(in_band))
+        in_band = szas <= 65. 
+        #print "%d/%d Zenith Angles < 65" % (np.count_nonzero(in_band),len(in_band))
         sigp[in_band] = .5*(f107*np.cos(szas_rad[in_band]))**(2./3)
         sigh[in_band] = 1.8*np.sqrt(f107)*np.cos(szas_rad[in_band])
 
-        in_band = np.logical_and(szas >= 65., szas < 100.)
-        #print "%d/%d Zenith Angles > 65 and < 100" % (np.count_nonzero(in_band), len(in_band))
+        in_band = np.logical_and(szas >= 65.,szas < 100.)
+        #print "%d/%d Zenith Angles > 65 and < 100" % (np.count_nonzero(in_band),len(in_band)) 
         sigp[in_band] = sigp65-.22*(szas[in_band]-65.)
         sigh[in_band] = sigh65-.27*(szas[in_band]-65.)
 
         in_band = szas > 100.
-        #print "%d/%d Zenith Angles > 100" % (np.count_nonzero(in_band), len(in_band))
         sigp[in_band] = sigp100-.13*(szas[in_band]-100.)
         sigh[in_band] = sigh65-.27*(szas[in_band]-65.)
 
@@ -338,8 +349,10 @@ class ConductanceEstimator(object):
         sigp_unflat = sigp.reshape(mlats.shape)
         sigh_unflat = sigh.reshape(mlats.shape)
 
-        return sigp_unflat, sigh_unflat
-
+        if return_f107:
+            return sigp_unflat, sigh_unflat, f107
+        else:
+            return sigp_unflat, sigh_unflat
 
 class FluxEstimator(object):
     """
@@ -353,6 +366,7 @@ class FluxEstimator(object):
     """
     def __init__(self, atype, jtype, seasonal_estimators=None, start_dt=None, end_dt=None):
         """
+
         doy - int
             day of year
 
@@ -371,108 +385,160 @@ class FluxEstimator(object):
 
         seasonal_estimators - dict, optional
             A dictionary of SeasonalFluxEstimators for seasons
-            'spring','fall','summer','winter', if you
+            'spring','fall','summer','winter', if you 
             don't want to create them
             (for efficiency across multi-day calls)
+
         """
         self.atype = atype #Type of aurora
         self.jtype = jtype #Type of flux
         if start_dt is not None and end_dt is not None:
             self.oi = geospacepy.omnireader.omni_interval(start_dt-datetime.timedelta(days=1),
                                                             end_dt+datetime.timedelta(days=1),
-                                                            '5min', silent=True) #Give 1 day +- buffer because we need avg SW
+                                                            '5min',silent=True) #Give 1 day +- buffer because we need avg SW
+
             #Pre-create an omni interval (for speed if you are estimating auroral flux across many days)
         else:
             self.oi = None #omni_interval objects will be created on-the-fly (slow, but fine for single calls to get_flux)
 
-        seasons = ['spring', 'summer', 'fall', 'winter']
+        seasons = ['spring','summer','fall','winter']
 
         if seasonal_estimators is None:
             #Make a seasonal estimator for each season with nonzero weight
-            self.seasonal_flux_estimators = {season:SeasonalFluxEstimator(season, atype, jtype) for season in seasons}
+            self.seasonal_flux_estimators = {season:SeasonalFluxEstimator(season,atype,jtype) for season in seasons}                
         else:
             #Ensure the passed seasonal estimators are approriate for this atype and jtype
-            for season, estimator in seasonal_flux_estimators.items():
+            for season,estimator in seasonal_flux_estimators.iteritems():
                 jtype_atype_ok = jtype_atype_ok and (self.jtype == estimator.jtype and self.atype == estimator.atype)
             if not jtype_atype_ok:
-                raise RuntimeError('Auroral and flux type of SeasonalFluxEstimators do not match {0} and {1}!'.format(self.atype, self.jtype))
+                raise RuntimeError('Auroral and flux type of SeasonalFluxEstimators do not match {0} and {1}!'.format(self.atype,self.jtype))
 
-    def get_flux_for_time(self, dt, hemi='N', return_dF=False):
+    def get_season_fluxes(self, dF):
         """
-        doy must be single value
-        mlats and mlts can be arbitary shape, but both must be same shape
+        Extract the flux for each season and hemisphere and
+        store them in a dictionary
+        Return positive latitudes, since northern and southern
+        latitude/localtime grids are the same
+        """
+        seasonfluxesN,seasonfluxesS = {},{}
+        gridmlats,gridmlts = None,None
+        for season,estimator in self.seasonal_flux_estimators.iteritems():
+            flux_outs = estimator.get_gridded_flux(dF)
+            gridmlatsN,gridmltsN,gridfluxN = flux_outs[:3]
+            gridmlatsS,gridmltsS,gridfluxS = flux_outs[3:]
+            seasonfluxesN[season]=gridfluxN
+            seasonfluxesS[season]=gridfluxS
+            gridmlats = gridmlatsN
+            gridmlts = gridmltsN
+        return gridmlats,gridmlts,seasonfluxesN,seasonfluxesS
+
+    def get_flux_for_time(self,dt,
+                            hemi='N',return_dF=False,combine_hemispheres=True):
+        """
+        The weighting of the seasonal flux for the different hemispheres
+        is a bit counterintuitive, but after some investigation of the flux
+        patterns produced for Northern and Southern hemispheres using a
+        particular SeasonalFluxEstimator (which in turn reads a particular
+        season's coefficients file), it seems like the 'summer' coefficients 
+        file contains the northern hemisphere coefficients for Boreal Summer
+        (roughly May-August) and the southern hemisphere coefficients for 
+        Austral Summer (roughly November-February).
+
+        In earlier versions of this code, the season weighting was wrong, 
+        because the code operated on the assumption that 'summer'
+        meant Boreal summer, and specified a range of dates for the data
+        used to construct the coefficients.
+
+        In the IDL version of this model, the flux produced for
+        Northern and Southern hemispheres is averaged, with the following
+        comment on the IDL keyword argument:
+
+        ;n_or_s=3 for combine north and south.  In effect this is the only
+        ;option that works.  The result is appropriate to the northern
+        ;hemisphere.  To get a result appropriate to the southern hemisphere,
+        ;call with doy = 365 - actual doy
+
+        Combining hemispheres is probably nessecary because
+        there are data gaps (particularly in the northern hemisphere dawn)
+        so this is the default behavior here as well. This can be overriden
+        by passing combine_hemispheres=False
         """
         doy = dt.timetuple().tm_yday
-        #if hemi == 'S':
-        #   doy = 365.-doy #Use opposite season coefficients to get southern hemisphere results
+        
+        if not combine_hemispheres:
+            print(('Warning: IDL version of OP2010 always combines hemispheres.'
+                  +'know what you are doing before switching this behavior'))
 
         if hemi=='N':
-            weightsN = self.season_weights(doy)
-            weightsS = self.season_weights(365.-doy)
+            weights = self.season_weights(doy)
         elif hemi=='S':
-            weightsN = self.season_weights(doy)
-            weightsS = self.season_weights(365.-doy)
-            #This is already handled in the organization of the
-            #ptype datafiles (re Betsey Mitchell)- LMK, 6-15-2017
-            #weightsN = self.season_weights(365.-doy)
-            #weightsS = self.season_weights(doy)
+            weights = self.season_weights(365.-doy)
+        else:
+            raise ValueError('Invalid hemisphere {0} (use N or S)'.format(hemi))
 
         avgsw = ovation_utilities.calc_avg_solarwind(dt, oi=self.oi)
-        dF = avgsw['Ec']
-        seasonal_flux = {}
-        n_mlat_bins = list(self.seasonal_flux_estimators.items())[0][1].n_mlat_bins//2 #div by 2 because combined N&S hemispheres
-        n_mlt_bins = list(self.seasonal_flux_estimators.items())[0][1].n_mlt_bins
-        gridflux = np.zeros((n_mlat_bins, n_mlt_bins))
-        for season in weightsN:
-            flux_estimator = self.seasonal_flux_estimators[season]
-            grid_mlats, grid_mlts, grid_fluxN, gridmlatsS, grid_mltsS, grid_fluxS = flux_estimator.get_gridded_flux(dF)
-            gridflux += grid_fluxN*weightsN[season]+grid_fluxS*weightsS[season]
+        dF = avgsw['Ec'] #Newell coupling
+        if hasattr(self,'_dF'):
+            print(('Warning: Overriding real Newell Coupling {0}'.format(dF)
+                   +'with secret instance property _dF {0}'.format(self._dF)
+                   +'this is for debugging and will not'
+                   +'produce accurate results for a particular date'))
+            dF = self._dF
+        
+        season_fluxes_outs = self.get_season_fluxes(dF) 
+        grid_mlats,grid_mlts,seasonfluxesN,seasonfluxesS = season_fluxes_outs
 
-        #Because we added together both hemispheres we now must divide everything by two
-        #to get the proper opposite season for other hemisphere weighting
-        gridflux *= .5
+        gridflux = np.zeros_like(seasonfluxesN['summer']) 
+        for season,W in weights.iteritems():
+            gridfluxN,gridfluxS = seasonfluxesN[season],seasonfluxesS[season]
+            if combine_hemispheres:
+                gridflux += W*(gridfluxN+gridfluxS)/2
+            elif hemi=='N':
+                gridflux += W*gridfluxN
+            elif hemi=='S':
+                gridflux += W*gridfluxS
 
         if hemi == 'S':
             grid_mlats = -1.*grid_mlats #by default returns positive latitudes
 
         if not return_dF:
-            return grid_mlats, grid_mlts, gridflux
+            return grid_mlats,grid_mlts,gridflux
         else:
-            return grid_mlats, grid_mlts, gridflux, dF
+            return grid_mlats,grid_mlts,gridflux,dF
 
-    def season_weights(self, doy):
+    def season_weights(self,doy):
         """
-        Determines the relative weighting of the
+        Determines the relative weighting of the 
         model coeffecients for the various seasons for a particular
         day of year (doy). Nominally, weights the seasons
         based on the difference between the doy and the peak
         of the season (solstice/equinox)
 
         Returns:
-            a dictionary with a key for each season.
+            a dictionary with a key for each season. 
             Each value in the dicionary is a float between 0 and 1
         """
-        weight = {'winter':0., 'spring':0., 'summer':0., 'fall':0.}
-        winter_w, spring_w, summer_w, fall_w = 0., 0., 0., 0.
+        weight = {'winter':0.,'spring':0.,'summer':0.,'fall':0.}
+        winter_w,spring_w,summer_w,fall_w = 0.,0.,0.,0.
 
         if doy >= 79. and doy < 171:
-            weight['summer'] = 1. - (171.-doy)/92.
-            weight['spring'] = 1. - weight['summer']
+           weight['summer'] = 1. - (171.-doy)/92.
+           weight['spring'] = 1. - weight['summer']
 
         elif doy >= 171. and doy < 263.:
-            weight['fall'] = 1. - (263.-doy)/92.
-            weight['summer'] = 1. - weight['fall']
-
+           weight['fall'] = 1. - (263.-doy)/92.
+           weight['summer'] = 1. - weight['fall']
+           
         elif doy >= 263. and doy < 354.:
-            weight['winter'] = 1. - (354.-doy)/91.
-            weight['fall'] = 1. - weight['winter']
-
+           weight['winter'] = 1. - (354.-doy)/91.
+           weight['fall'] = 1. - weight['winter']
+        
         elif doy >= 354 or doy < 79:
             #For days of year > 354, subtract 365 to get negative
             #day of year values for computation
             doy0 = doy- 365. if doy >= 354 else doy
             weight['spring'] = 1. - (79.-doy0)/90.
-            weight['winter'] = 1. - weight['spring']
+            weight['winter'] = 1. - weight['spring'] 
 
         return weight
 

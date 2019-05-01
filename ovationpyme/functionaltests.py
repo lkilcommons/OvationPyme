@@ -76,9 +76,7 @@ def draw_conductance(dt, startdt, enddt, hemi):
 
     f.suptitle("OvationPyme Conductance Output {0} Hemisphere at {1} \n".format(hemi, dt.strftime('%c')),
             fontweight='bold')
-
     return f
-
 
 def draw_weighted_flux(dt, atype='diff', jtype='electron energy flux'):
     """
@@ -96,6 +94,7 @@ def draw_weighted_flux(dt, atype='diff', jtype='electron energy flux'):
 
     XN, YN = satplottools.latlt2cart(mlatgridN.flatten(), mltgridN.flatten(), 'N')
     XS, YS = satplottools.latlt2cart(mlatgridS.flatten(), mltgridS.flatten(), 'S')
+
     XN = XN.reshape(mlatgridN.shape)
     YN = YN.reshape(mltgridN.shape)
     XS = XS.reshape(mlatgridS.shape)
@@ -139,6 +138,7 @@ def draw_seasonal_flux(seasonN='summer', seasonS='winter', atype='diff', jtype='
 
     XN, YN = satplottools.latlt2cart(mlatgridN.flatten(), mltgridN.flatten(), 'N')
     XS, YS = satplottools.latlt2cart(mlatgridS.flatten(), mltgridS.flatten(), 'S')
+
     XN = XN.reshape(mlatgridN.shape)
     YN = YN.reshape(mltgridN.shape)
     XS = XS.reshape(mlatgridS.shape)
