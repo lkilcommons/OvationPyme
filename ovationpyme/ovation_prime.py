@@ -279,7 +279,7 @@ class ConductanceEstimator(object):
         else:
             return mlat_grid, mlt_grid, sigp, sigh
 
-    def solar_conductance(self, dt, mlats, mlts):
+    def solar_conductance(self, dt, mlats, mlts, return_f107=False):
         """
         Estimate the solar conductance using methods from:
             Cousins, E. D. P., T. Matsuo, and A. D. Richmond (2015), Mapping
