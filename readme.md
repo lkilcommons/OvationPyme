@@ -41,7 +41,7 @@ Use Python versions >= 2.7
 ## Tests
 Unit tests are written for the py.test framework. If you have this installed,
 you can run the tests by issuing `py.test` from the command line in the 'ovationpyme'
-directory. If you are not a programmer, this probably will not be very interesting.
+directory.
 
 Functional tests (which make several plots to show things are working properly) 
 can be run by calling the package's test_plots.py as a script.
