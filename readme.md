@@ -15,8 +15,6 @@ Ovation Pyme is a complete translation of the IDL (a proprietary programming lan
 owned by ExelisVis) version used by NOAA, which was released in an open source format 
 [Sourceforge](https://sourceforge.net/projects/ovation-prime/) by Janet Machol, Rob Redmon and Nathan Case
 of NOAA National Center for Environmental Information (NCEI). 
-Liam Kilcommons created this software to support the Pythonification of the Assimiliative Mapping
-of Ionospheric Electrodynamics project (AMIEPy), and for the Python space science community. 
 __Contributions and comments are very welcome__.
 
 ## Differences in this implementation compared to the IDL version
