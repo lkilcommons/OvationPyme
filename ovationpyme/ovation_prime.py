@@ -408,7 +408,7 @@ class FluxEstimator(object):
             self.seasonal_flux_estimators = {season:SeasonalFluxEstimator(season,atype,jtype) for season in seasons}                
         else:
             #Ensure the passed seasonal estimators are approriate for this atype and jtype
-            for season,estimator in seasonal_flux_estimators.iteritems():
+            for season,estimator in seasonal_flux_estimators.items():
                 jtype_atype_ok = jtype_atype_ok and (self.jtype == estimator.jtype and self.atype == estimator.atype)
             if not jtype_atype_ok:
                 raise RuntimeError('Auroral and flux type of SeasonalFluxEstimators do not match {0} and {1}!'.format(self.atype,self.jtype))
@@ -422,7 +422,7 @@ class FluxEstimator(object):
         """
         seasonfluxesN,seasonfluxesS = {},{}
         gridmlats,gridmlts = None,None
-        for season,estimator in self.seasonal_flux_estimators.iteritems():
+        for season,estimator in self.seasonal_flux_estimators.items():
             flux_outs = estimator.get_gridded_flux(dF)
             gridmlatsN,gridmltsN,gridfluxN = flux_outs[:3]
             gridmlatsS,gridmltsS,gridfluxS = flux_outs[3:]
@@ -489,7 +489,7 @@ class FluxEstimator(object):
         grid_mlats,grid_mlts,seasonfluxesN,seasonfluxesS = season_fluxes_outs
 
         gridflux = np.zeros_like(seasonfluxesN['summer']) 
-        for season,W in weights.iteritems():
+        for season,W in weights.items():
             gridfluxN,gridfluxS = seasonfluxesN[season],seasonfluxesS[season]
             if combine_hemispheres:
                 gridflux += W*(gridfluxN+gridfluxS)/2
