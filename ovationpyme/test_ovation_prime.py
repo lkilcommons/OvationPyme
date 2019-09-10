@@ -39,13 +39,13 @@ def idl_call_results(request):
 
 @pytest.fixture()
 def seasonal_flux_estimator(request):
-    season, atype, jtype = 'winter', 'diff', 'electron energy flux'
-    return ovationpyme.ovation_prime.SeasonalFluxEstimator(season, atype, jtype)
+    season, atype, energy_or_number = 'winter', 'diff', 'energy'
+    return ovationpyme.ovation_prime.SeasonalFluxEstimator(season, atype, energy_or_number)
 
 @pytest.fixture()
 def flux_estimator(request):
-    atype, jtype = 'diff', 'electron energy flux'
-    return ovationpyme.ovation_prime.FluxEstimator(atype, jtype)
+    atype, energy_or_number = 'diff', 'energy'
+    return ovationpyme.ovation_prime.FluxEstimator(atype, energy_or_number)
 
 def test_b1_same_as_idl(seasonal_flux_estimator, idl_call_results):
     """
@@ -59,7 +59,7 @@ def test_b1_same_as_idl(seasonal_flux_estimator, idl_call_results):
 
 def test_prob_estimate_same_as_idl(seasonal_flux_estimator, idl_call_results):
     """
-    Check that prob_estimate method of SeasonalFluxEstimator 
+    Check that prob_estimate method of SeasonalFluxEstimator
     produces the same result for a given
     bin (i_mlat,j_mlt), coupling strength (dF), season,
     auroral type (atype) and fluxtype (jtype)

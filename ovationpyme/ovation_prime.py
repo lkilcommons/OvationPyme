@@ -1,5 +1,5 @@
 """
-This module contains the main model routines for 
+This module contains the main model routines for
 Ovation Prime (historically called season_epoch.pro)
 """
 import os
@@ -9,6 +9,10 @@ import numpy as np
 from scipy import interpolate
 
 from ovationpyme import ovation_utilities
+
+from ovationpyme.ovation_utilities import robinson_auroral_conductance
+from ovationpyme.ovation_utilities import brekke_moen_solar_conductance
+
 import geospacepy
 from geospacepy import special_datetime,astrodynamics2,satplottools
 import aacgmv2 #available on pip
@@ -19,6 +23,27 @@ import aacgmv2 #available on pip
 src_file_dir = os.path.dirname(os.path.realpath(__file__))
 ovation_datadir = os.path.join(src_file_dir,'data')
 
+def _check_for_old_jtype(estimator,type_of_flux):
+    """Check the type of flux (2nd constructor argument) of
+    a FluxEstimator or SeasonalFluxEstimator class and
+    raise an extensive error to inform user that they need
+    to modify their calling function, and why"""
+
+    name = estimator.__class__.__name__
+    explaination = ('Constructor interface to {} has changed'.format(name)
+                          +' now the only valid second argument values'
+                          +' (for type of flux) are "energy" or "number".\n'
+                          +' Formerly, the second argument could take values'
+                          +' which confused types of flux with types of aurora'
+                          +' (e.g. you could specify ion or electron, which'
+                          +' is a property of the auroral type (choose "ion"'
+                          +' auroral type to get ion fluxes).\n'
+                          +' If you wish to calculate average energy, you'
+                          +' will need to switch from a FluxEstimator class'
+                          +' to an AverageEnergyEstimator class')
+    if type_of_flux not in ['energy','number']:
+        raise RuntimeError('{} is not a valid fluxtype.\n{}'.format(type_of_flux,
+                                                                explaination))
 
 class LatLocaltimeInterpolator(object):
     def __init__(self, mlat_grid, mlt_grid, var):
@@ -140,65 +165,17 @@ class ConductanceEstimator(object):
     total electron energy flux
     (assumes a Maxwellian electron energy distribution)
     """
-    def __init__(self, start_dt, end_dt, fluxtypes=['diff', 'mono', 'wave']):
+    def __init__(self,fluxtypes=['diff', 'mono', 'wave']):
 
         #Use diffuse aurora only
         self.numflux_estimator = {}
         self.eavg_estimator = {}
         for fluxtype in fluxtypes:
-            self.numflux_estimator[fluxtype] = FluxEstimator(fluxtype, 'electron number flux', start_dt=start_dt, end_dt=end_dt)
-            #self.energyflux_estimator = FluxEstimator('diff', 'electron energy flux', start_dt=start_dt, end_dt=end_dt)
-            self.eavg_estimator[fluxtype] = FluxEstimator(fluxtype, 'electron average energy', start_dt=start_dt, end_dt=end_dt)
-
-        #Need hourly omni data for F10.7
-        self.oi = geospacepy.omnireader.omni_interval(start_dt, end_dt, 'hourly', silent=True) 
-        self.omjd = special_datetime.datetimearr2jd(self.oi['Epoch'])
-        self.omf107 = self.oi['F10_INDEX']
-
-    #def remove_bad_bins(self, numflux, eavg, max_replace=10):
-    #    flat_nflux = numflux.flatten()
-    #    flat_eavg = eavg.flatten()
-    #    for i in range(max_replace):
-    #        i_max = np.nanargmax(flat_nflux)
-    #        flat_nflux[i_max]=np.nan
-    #        flat_eavg[i_max]=np.nan
-
-    #    #Calculate replacement values
-    #    rep_nflux = np.nanmax(flat_nflux)
-    #    i_replace = np.nanargmin(flat_nflux-rep_nflux)
-    #    rep_eavg = flat_eavg[i_replace]
-    #    #Find and replace any bind simultaneously about the rep values
-    #    bad_bins = np.logical_or(flat_nflux>rep_nflux, flat_eavg>rep_eavg)
-    #    flat_nflux[bad_bins] = rep_nflux
-    #    flat_eavg[bad_bins] = rep_eavg
-    #    fixed_numflux = flat_nflux.reshape(numflux.shape)
-    #    fixed_eavg = flat_eavg.reshape(eavg.shape)
-    #    print("Set %d bad bins to nflux %.2e eavg %.2f" % (np.count_nonzero(bad_bins),
-    #                                                                                                            rep_nflux,rep_eavg))
-    #    return fixed_numflux,fixed_eavg
-
-    def get_closest_f107(self, dt):
-        """
-        Finds closest F10.7 value from hourly omni data to match with datetime
-        Brekke and Moen describe using the daily F10.7 in the parameterizaton, 
-        so I just do the mean for all of the 1 hour values for the day.
-        """
-        jd = special_datetime.datetime2jd(dt)
-        imatch = np.floor(self.omjd.flatten())==np.floor(jd)
-        return np.nanmean(self.omf107[imatch])
-
-    def robinson_formula(self, numflux_grid, eavg_grid):
-        #From E. Cousins IDL code
-        #Implement the Robinson formula
-        #Assume all of the particles come in at the average energy??
-        energyflux_grid = numflux_grid*1.6022e-9*eavg_grid #keV to ergs, * #/(cm^2 s)
-        #energyflux_grid *= 1.6022e-9
-        sigp_auroral = 40.*eavg_grid/(16+eavg_grid**2) * np.sqrt(energyflux_grid)
-        sigh_auroral = 0.45*eavg_grid**0.85*sigp_auroral
-        return sigp_auroral, sigh_auroral
+            self.numflux_estimator[fluxtype] = FluxEstimator(fluxtype, 'number')
+            self.eavg_estimator[fluxtype] = AverageEnergyEstimator(fluxtype)
 
     def get_conductance(self, dt, hemi='N', solar=True, auroral=True,  background_p=None, background_h=None,
-                        conductance_fluxtypes=['diff'], interp_bad_bins=True, 
+                        conductance_fluxtypes=['diff'], interp_bad_bins=True,
                         return_dF=False, return_f107=False,
                         dnflux_bad_thresh=1.0e8, deavg_bad_thresh=.3):
         """
@@ -212,7 +189,7 @@ class ConductanceEstimator(object):
         for fluxtype in conductance_fluxtypes:
             mlat_grid, mlt_grid, numflux_grid, dF = self.numflux_estimator[fluxtype].get_flux_for_time(dt, hemi=hemi, return_dF=True)
             #mlat_grid, mlt_grid, energyflux_grid = self.energyflux_estimator.get_flux_for_time(dt, hemi=hemi)
-            mlat_grid, mlt_grid, eavg_grid = self.eavg_estimator[fluxtype].get_flux_for_time(dt, hemi=hemi)
+            mlat_grid, mlt_grid, eavg_grid = self.eavg_estimator[fluxtype].get_eavg_for_time(dt, hemi=hemi)
 
             if interp_bad_bins:
                 #Clean up any extremely large bins
@@ -228,16 +205,17 @@ class ConductanceEstimator(object):
 
                 #zero out lowest latitude numflux row because it makes no sense
                 #has some kind of artefact at post midnight
-                bad = np.abs(mlat_grid) < 52.0 
+                bad = np.abs(mlat_grid) < 52.0
                 numflux_grid[bad] = 0.
 
             #raise RuntimeError('Debug stop!')
 
-            this_sigp_auroral, this_sigh_auroral = self.robinson_formula(numflux_grid, eavg_grid)
+            aur_conds = robinson_auroral_conductance(numflux_grid, eavg_grid)
+            this_sigp_auroral, this_sigh_auroral = aur_conds
             all_sigp_auroral.append(this_sigp_auroral)
             all_sigh_auroral.append(this_sigh_auroral)
 
-        sigp_solar, sigh_solar =  self.solar_conductance(dt, mlat_grid, mlt_grid)
+        sigp_solar, sigh_solar, f107 =  self.solar_conductance(dt, mlat_grid, mlt_grid, return_f107=True)
         total_sigp_sqrd = np.zeros_like(sigp_solar)
         total_sigh_sqrd = np.zeros_like(sigh_solar)
 
@@ -295,7 +273,7 @@ class ConductanceEstimator(object):
         """
         #Find the closest hourly f107 value
         #to the current time to specifiy the conductance
-        f107 = self.get_closest_f107(dt)
+        f107 = ovation_utilities.get_daily_f107(dt)
         if hasattr(self,'_f107'):
             print(('Warning: Overriding real F107 {0}'.format(f107)
                    +'with secret instance property _f107 {0}'.format(self._f107)
@@ -307,44 +285,11 @@ class ConductanceEstimator(object):
 
         #Convert from magnetic to geocentric using the AACGMv2 python library
         flatmlats,flatmlts = mlats.flatten(),mlts.flatten()
-        #flatmlons = (flatmlts-zero_lon_mlt)/12*180.
         flatmlons = aacgmv2.convert_mlt(flatmlts, dt, m2a=True)
         glats,glons = aacgmv2.convert(flatmlats, flatmlons, 110.*np.ones_like(flatmlats),
-                                                                date=dt, a2g=True, geocentric=False)
-        szas = astrodynamics2.solar_zenith_angle(dt, glats, glons)
-        szas_rad = szas/180.*np.pi
+                                        date=dt, a2g=True, geocentric=False)
 
-        sigp,sigh = np.zeros_like(glats),np.zeros_like(glats)
-
-        cos65 = np.cos(65/180.*np.pi)
-        sigp65  = .5*(f107*cos65)**(2./3)
-        sigh65  = 1.8*np.sqrt(f107)*cos65
-        sigp100 = sigp65-0.22*(100.-65.)
-
-        in_band = szas <= 65. 
-        #print "%d/%d Zenith Angles < 65" % (np.count_nonzero(in_band),len(in_band))
-        sigp[in_band] = .5*(f107*np.cos(szas_rad[in_band]))**(2./3)
-        sigh[in_band] = 1.8*np.sqrt(f107)*np.cos(szas_rad[in_band])
-
-        in_band = np.logical_and(szas >= 65.,szas < 100.)
-        #print "%d/%d Zenith Angles > 65 and < 100" % (np.count_nonzero(in_band),len(in_band)) 
-        sigp[in_band] = sigp65-.22*(szas[in_band]-65.)
-        sigh[in_band] = sigh65-.27*(szas[in_band]-65.)
-
-        in_band = szas > 100.
-        sigp[in_band] = sigp100-.13*(szas[in_band]-100.)
-        sigh[in_band] = sigh65-.27*(szas[in_band]-65.)
-
-        sigp[sigp<.4] = .4
-        sigh[sigh<.8] = .8
-
-        #correct for inverse relationship with magnetic field from AMIE code
-        #(conductance_models.f90)
-        theta = np.radians(90.-glats)
-        bbp = np.sqrt(1. - 0.99524*np.sin(theta)**2)*(1. + 0.3*np.cos(theta)**2)
-        bbh = np.sqrt(1. - 0.01504*(1.-np.cos(theta)) - 0.97986*np.sin(theta)**2)*(1.0+0.5*np.cos(theta)**2)
-        sigp = sigp*1.134/bbp
-        sigh = sigh*1.285/bbh
+        sigp,sigh = brekke_moen_solar_conductance(dt,glats,glons,f107)
 
         sigp_unflat = sigp.reshape(mlats.shape)
         sigh_unflat = sigh.reshape(mlats.shape)
@@ -353,6 +298,49 @@ class ConductanceEstimator(object):
             return sigp_unflat, sigh_unflat, f107
         else:
             return sigp_unflat, sigh_unflat
+
+class AverageEnergyEstimator(object):
+    """A class which estimates average energy by estimating both
+    energy and number flux
+    """
+    def __init__(self,atype,numflux_threshold=5.0e7):
+        self.numflux_threshold = numflux_threshold
+        self.numflux_estimator = FluxEstimator(atype,'number')
+        self.energyflux_estimator = FluxEstimator(atype,'energy')
+
+    def get_eavg_for_time(self,dt,hemi='N',return_dF=False,combine_hemispheres=True):
+
+        kwargs = {
+                    'hemi':hemi,
+                    'combine_hemispheres':combine_hemispheres,
+                    'return_dF':True
+                    }
+
+        grid_mlats,grid_mlts,gridnumflux,dF = self.numflux_estimator.get_flux_for_time(dt,**kwargs)
+        grid_mlats,grid_mlts,gridenergyflux,dF = self.energyflux_estimator.get_flux_for_time(dt,**kwargs)
+
+        grideavg = (gridenergyflux/1.6e-12)/gridnumflux #energy flux Joules->eV
+        grideavg = grideavg/1000. #eV to keV
+
+        #Limit to reasonable number fluxes
+        n_pts = len(grideavg.flatten())
+        n_low_numflux = np.count_nonzero(gridnumflux<self.numflux_threshold)
+        grideavg[gridnumflux<self.numflux_threshold]=0.
+        print(('Zeroed {:d}/{:d} average energies'.format(n_low_numflux,n_pts)
+              +'with numflux below {:e}'.format(self.numflux_threshold)))
+
+        #Limit to DMSP SSJ channels range
+        n_over = np.count_nonzero(grideavg>30)
+        n_under = np.count_nonzero(grideavg<.5)
+        print('Zeroed {:d}/{:d} average energies over 30 keV'.format(n_over,n_pts))
+        print('Zeroed {:d}/{:d} average energies under .2 keV'.format(n_under,n_pts))
+        grideavg[grideavg>30.]=30.#Max of 30keV
+        grideavg[grideavg<.2]=0. #Min of 1 keV
+
+        if not return_dF:
+            return grid_mlats,grid_mlts,grideavg
+        else:
+            return grid_mlats,grid_mlts,grideavg,dF
 
 class FluxEstimator(object):
     """
@@ -364,7 +352,7 @@ class FluxEstimator(object):
     time, and are interpolated using a B-spline
     representation
     """
-    def __init__(self, atype, jtype, seasonal_estimators=None, start_dt=None, end_dt=None):
+    def __init__(self, atype, energy_or_number, seasonal_estimators=None):
         """
 
         doy - int
@@ -373,42 +361,32 @@ class FluxEstimator(object):
         atype - str, ['diff','mono','wave','ions']
             type of aurora for which to load regression coeffients
 
-        jtype - int or str
-            1:"electron energy flux",
-            2:"ion energy flux",
-            3:"electron number flux",
-            4:"ion number flux",
-            5:"electron average energy",
-            6:"ion average energy"
+        energy_or_number - str, ['energy','number']
 
             Type of flux you want to estimate
 
         seasonal_estimators - dict, optional
             A dictionary of SeasonalFluxEstimators for seasons
-            'spring','fall','summer','winter', if you 
+            'spring','fall','summer','winter', if you
             don't want to create them
             (for efficiency across multi-day calls)
 
         """
         self.atype = atype #Type of aurora
-        self.jtype = jtype #Type of flux
-        if start_dt is not None and end_dt is not None:
-            self.oi = geospacepy.omnireader.omni_interval(start_dt-datetime.timedelta(days=1),
-                                                            end_dt+datetime.timedelta(days=1),
-                                                            '5min',silent=True) #Give 1 day +- buffer because we need avg SW
 
-            #Pre-create an omni interval (for speed if you are estimating auroral flux across many days)
-        else:
-            self.oi = None #omni_interval objects will be created on-the-fly (slow, but fine for single calls to get_flux)
+        #Check for legacy values of this argument
+        _check_for_old_jtype(self,energy_or_number)
+
+        self.energy_or_number = energy_or_number #Type of flux
 
         seasons = ['spring','summer','fall','winter']
 
         if seasonal_estimators is None:
             #Make a seasonal estimator for each season with nonzero weight
-            self.seasonal_flux_estimators = {season:SeasonalFluxEstimator(season,atype,jtype) for season in seasons}                
+            self.seasonal_flux_estimators = {season:SeasonalFluxEstimator(season,atype,energy_or_number) for season in seasons}
         else:
             #Ensure the passed seasonal estimators are approriate for this atype and jtype
-            for season,estimator in seasonal_flux_estimators.items():
+            for season,estimator in seasonal_estimators.items():
                 jtype_atype_ok = jtype_atype_ok and (self.jtype == estimator.jtype and self.atype == estimator.atype)
             if not jtype_atype_ok:
                 raise RuntimeError('Auroral and flux type of SeasonalFluxEstimators do not match {0} and {1}!'.format(self.atype,self.jtype))
@@ -439,12 +417,12 @@ class FluxEstimator(object):
         is a bit counterintuitive, but after some investigation of the flux
         patterns produced for Northern and Southern hemispheres using a
         particular SeasonalFluxEstimator (which in turn reads a particular
-        season's coefficients file), it seems like the 'summer' coefficients 
+        season's coefficients file), it seems like the 'summer' coefficients
         file contains the northern hemisphere coefficients for Boreal Summer
-        (roughly May-August) and the southern hemisphere coefficients for 
+        (roughly May-August) and the southern hemisphere coefficients for
         Austral Summer (roughly November-February).
 
-        In earlier versions of this code, the season weighting was wrong, 
+        In earlier versions of this code, the season weighting was wrong,
         because the code operated on the assumption that 'summer'
         meant Boreal summer, and specified a range of dates for the data
         used to construct the coefficients.
@@ -464,7 +442,7 @@ class FluxEstimator(object):
         by passing combine_hemispheres=False
         """
         doy = dt.timetuple().tm_yday
-        
+
         if not combine_hemispheres:
             print(('Warning: IDL version of OP2010 always combines hemispheres.'
                   +'know what you are doing before switching this behavior'))
@@ -476,19 +454,18 @@ class FluxEstimator(object):
         else:
             raise ValueError('Invalid hemisphere {0} (use N or S)'.format(hemi))
 
-        avgsw = ovation_utilities.calc_avg_solarwind(dt, oi=self.oi)
-        dF = avgsw['Ec'] #Newell coupling
+        dF = ovation_utilities.calc_dF(dt)
         if hasattr(self,'_dF'):
             print(('Warning: Overriding real Newell Coupling {0}'.format(dF)
                    +'with secret instance property _dF {0}'.format(self._dF)
                    +'this is for debugging and will not'
                    +'produce accurate results for a particular date'))
             dF = self._dF
-        
-        season_fluxes_outs = self.get_season_fluxes(dF) 
+
+        season_fluxes_outs = self.get_season_fluxes(dF)
         grid_mlats,grid_mlts,seasonfluxesN,seasonfluxesS = season_fluxes_outs
 
-        gridflux = np.zeros_like(seasonfluxesN['summer']) 
+        gridflux = np.zeros_like(seasonfluxesN['summer'])
         for season,W in weights.items():
             gridfluxN,gridfluxS = seasonfluxesN[season],seasonfluxesS[season]
             if combine_hemispheres:
@@ -508,14 +485,14 @@ class FluxEstimator(object):
 
     def season_weights(self,doy):
         """
-        Determines the relative weighting of the 
+        Determines the relative weighting of the
         model coeffecients for the various seasons for a particular
         day of year (doy). Nominally, weights the seasons
         based on the difference between the doy and the peak
         of the season (solstice/equinox)
 
         Returns:
-            a dictionary with a key for each season. 
+            a dictionary with a key for each season.
             Each value in the dicionary is a float between 0 and 1
         """
         weight = {'winter':0.,'spring':0.,'summer':0.,'fall':0.}
@@ -528,20 +505,19 @@ class FluxEstimator(object):
         elif doy >= 171. and doy < 263.:
            weight['fall'] = 1. - (263.-doy)/92.
            weight['summer'] = 1. - weight['fall']
-           
+
         elif doy >= 263. and doy < 354.:
            weight['winter'] = 1. - (354.-doy)/91.
            weight['fall'] = 1. - weight['winter']
-        
+
         elif doy >= 354 or doy < 79:
             #For days of year > 354, subtract 365 to get negative
             #day of year values for computation
             doy0 = doy- 365. if doy >= 354 else doy
             weight['spring'] = 1. - (79.-doy0)/90.
-            weight['winter'] = 1. - weight['spring'] 
+            weight['winter'] = 1. - weight['spring']
 
         return weight
-
 
 class SeasonalFluxEstimator(object):
     """
@@ -552,7 +528,8 @@ class SeasonalFluxEstimator(object):
     Given a particular season, type of aurora ( one of ['diff','mono','wave','ions'])
     and type of flux, returns
     """
-    def __init__(self, season, atype, jtype):
+
+    def __init__(self, season, atype, energy_or_number):
         """
         season - str,['winter','spring','summer','fall']
             season for which to load regression coeffients
@@ -560,21 +537,21 @@ class SeasonalFluxEstimator(object):
         atype - str, ['diff','mono','wave','ions']
             type of aurora for which to load regression coeffients
 
-        jtype - int or str
-            1:"electron energy flux",
-            2:"ion energy flux",
-            3:"electron number flux",
-            4:"ion number flux",
-            5:"electron average energy",
-            6:"ion average energy"
+        energy_or_number - str, ['energy','number']
+            type of flux you want to estimate
         """
 
         nmlt = 96                           #number of mag local times in arrays (resolution of 15 minutes)
         nmlat = 160                         #number of mag latitudes in arrays (resolution of 1/4 of a degree (.25))
         ndF = 12                                                        #number of coupling strength bins
-        self.jtype, self.atype = jtype, atype
-
         self.n_mlt_bins, self.n_mlat_bins, self.n_dF_bins = nmlt, nmlat, ndF
+
+        self.atype = atype
+
+        #Check for legacy values of this argument
+        _check_for_old_jtype(self,energy_or_number)
+
+        self.energy_or_number = energy_or_number
 
         #The mlat bins are orgainized like -50:-dlat:-90, 50:dlat:90
         self.mlats = np.concatenate([np.linspace(-90., -50., self.n_mlat_bins//2)[::-1],
@@ -582,15 +559,8 @@ class SeasonalFluxEstimator(object):
 
         self.mlts = np.linspace(0., 24., self.n_mlt_bins)
 
-        self.fluxtypes = {1:"electron energy flux",
-                          2:"ion energy flux",
-                          3:"electron number flux",
-                          4:"ion number flux",
-                          5:"electron average energy",
-                          6:"ion average energy"}
-
         #Determine file names
-        file_suffix = '_n' if (jtype in [3, 4] or 'number flux' in jtype) else ''
+        file_suffix = '_n' if energy_or_number=='number' else ''
         self.afile = os.path.join(ovation_datadir, 'premodel/{0}_{1}{2}.txt'.format(season, atype, file_suffix))
         self.pfile = os.path.join(ovation_datadir, 'premodel/{0}_prob_b_{1}.txt'.format(season, atype))
         #Defualt values of header (don't know why need yet)
@@ -645,10 +615,6 @@ class SeasonalFluxEstimator(object):
             for idF in range(ndF):
                 self.prob[mlt_bin_inds, mlat_bin_inds, idF]=pdata_p_column_dFbin[:, idF]
 
-            if season=='spring' and atype=='diff' and jtype=='electron energy flux':
-                print(self.b1p[22:26, 138:142])
-                print(self.prob[22:26, 138:142, 5])
-
         #IDL original read
         #readf,20,i,j,b1,b2,rF
         #;;   b1a_all(atype, iseason,i,j) = b1
@@ -664,7 +630,7 @@ class SeasonalFluxEstimator(object):
         dFstep = dFave/8.
         i_dFbin = np.round(dF/dFstep)
         #Range check 0 <= i_dFbin <= n_dF_bins-1
-        if i_dFbin < 0 or i_dFbin > self.n_dF_bins-1: 
+        if i_dFbin < 0 or i_dFbin > self.n_dF_bins-1:
             i_dFbin = 0 if i_dFbin < 0 else self.n_dF_bins-1
         return int(i_dFbin)
 
@@ -714,41 +680,41 @@ class SeasonalFluxEstimator(object):
         #print(p, b1, b2, dF)
         flux = (b1+b2*dF)*p
         return self.correct_flux(flux)
-            
+
     def correct_flux(self, flux):
         """
         A series of magical (unexplained, unknown) corrections to flux given a particular
         type of flux
         """
-        fluxtype = self.jtype
+        fluxtype = self.energy_or_number
 
         if flux < 0.:
             flux = 0.
 
         if self.atype is not 'ions':
             #Electron Energy Flux
-            if fluxtype in [1, self.fluxtypes[1]]:
+            if fluxtype == 'energy':
                 if flux > 10.:
                     flux = 0.5
                 elif flux > 5.:
                     flux = 5.
 
             #Electron Number Flux
-            if fluxtype in [3, self.fluxtypes[3]]:
+            elif fluxtype == 'number':
                 if flux > 2.0e9:
                     flux = 1.0e9
                 elif flux > 2.0e10:
                     flux = 0.
         else:
             #Ion Energy Flux
-            if fluxtype in [2, self.fluxtypes[2]]:
+            if fluxtype == 'energy':
                 if flux > 2.:
                     flux = 2.
                 elif flux > 4.:
                     flux = 0.25
 
             #Ion Number Flux
-            if fluxtype in [4, self.fluxtypes[4]]:
+            if fluxtype == 'number':
                 if flux > 1.0e8:
                     flux = 1.0e8
                 elif flux > 5.0e8:
@@ -764,7 +730,7 @@ class SeasonalFluxEstimator(object):
             Average the fluxes for northern and southern hemisphere
             and use them for both hemispheres (this is what standard
             ovation prime does always I think, so I've made it default)
-            The original code says that this result is appropriate for 
+            The original code says that this result is appropriate for
             the northern hemisphere, and to use 365 - actual doy to
             get a combined result appropriate for the southern hemisphere
 
