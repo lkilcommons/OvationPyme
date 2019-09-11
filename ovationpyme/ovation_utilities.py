@@ -47,7 +47,7 @@ def cache_omni_interval(func):
 
         if need_new_oi:
             startdt = dt-datetime.timedelta(days=new_interval_days_before_dt)
-            enddt = dt-datetime.timedelta(days=new_interval_days_after_dt)
+            enddt = dt+datetime.timedelta(days=new_interval_days_after_dt)
 
             oi = omnireader.omni_interval(startdt,
                                             enddt,
