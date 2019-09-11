@@ -57,10 +57,10 @@ def cache_omni_interval(func):
             cache['omni_interval'] = oi
             print("Created new OI: {}-{}".format(oi.startdt,oi.enddt))
         else:
-            print("Using cached OI: {}-{}".format(cached_oi['last'].startdt,
-                                              cached_oi['last'].enddt))
             #Load from cache
             oi = cached_oi['omni_interval']
+            print("Using cached OI: {}-{}".format(oi.startdt,oi.enddt))
+
 
         return func(dt,oi=oi)
 
