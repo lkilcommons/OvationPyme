@@ -41,7 +41,7 @@ def cache_omni_interval(func):
 
         if 'omni_interval' in cache:
             cached_oi = cache['omni_interval']
-            need_new_oi = not dt_in_range
+            need_new_oi = not dt_within_range(cached_oi,dt)
         else:
             need_new_oi = True
 
