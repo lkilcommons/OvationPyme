@@ -1,5 +1,5 @@
 # Ovation Pyme
-## A pure-python implementation of the Ovation Prime auroral precipitation model
+## A pure-python implementation of the Ovation Prime 2010 auroral precipitation model
 
 ## Introduction to The Model
 Ovation Prime is a model which predicts the total energy flux, total number flux,
