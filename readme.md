@@ -17,7 +17,7 @@ These limitations are described in detail in [Newell et al. 2013](https://doi.or
 
 ## Provenance of this implementation
 Ovation Pyme is a complete translation of the IDL (a proprietary programming language,
-owned by ExelisVis) version used by NOAA, which was released in an open source format 
+owned by ExelisVis) version released in an open source format 
 [Sourceforge](https://sourceforge.net/projects/ovation-prime/) by Janet Machol, Rob Redmon and Nathan Case
 of NOAA National Center for Environmental Information (NCEI). 
 __Contributions and comments are very welcome__.
