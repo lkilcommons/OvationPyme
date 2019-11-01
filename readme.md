@@ -2,13 +2,12 @@
 ## A pure-python implementation of the Ovation Prime 2010 auroral precipitation model
 
 ## Introduction to The Model
-Ovation Prime is a model which predicts the total energy flux, total number flux,
+Ovation Prime 2010, (described in [Newell et al., 2009](https://doi.org/10.1029/2009JA014326) and [Newell et al. 2010](https://doi.org/10.1029/2009JA014805)) is a model which predicts the total energy flux, total number flux,
 and average characteristic energy of precipitating electrons and ions in the polar regions.
 A Maxwellian particle energy (and velocity) distribution is assumed for the calculation of
 average energy. The model was based on data from the Defense Meteorology Satellite Program
 spacecraft, using data beginning in 1985. These spacecraft carry a particle detector (SSJ)
 which is sensitive to particles with characteristic energies between 30 eV and 30 keV.
-The original model was created by Patrick Newell et. al. (John Hopkins Applied Physics Laboratory)
 
 ## Provenance of this implementation
 Ovation Pyme is a complete translation of the IDL (a proprietary programming language,
@@ -75,7 +74,9 @@ magnetosphere coupling function inferred from 10 magnetospheric state variables,
 112, A01206, doi:10.1029/2006JA012015.
 
 - Newell, P. T., T. Sotirelis, and S. Wing (2009), Diffuse, monoenergetic, and broadband aurora: The global
-precipitation budget, J. Geophys. Res., 114, A09207, doi:10.1029/2009JA014326.Newell, P. T., T. Sotirelis, and S. Wing (2010), Seasonal variations in diffuse, monoenergetic, and broadband aurora, J. Geophys. Res., 115, A03216, doi:10.1029/2009JA014805.
+precipitation budget, J. Geophys. Res., 114, A09207, doi:10.1029/2009JA014326.
+
+- Newell, P. T., T. Sotirelis, and S. Wing (2010), Seasonal variations in diffuse, monoenergetic, and broadband aurora, J. Geophys. Res., 115, A03216, doi:10.1029/2009JA014805.
 
 - Sotirelis, T. and P. T. Newell (2000), "Boundary-oriented electron precipitation model," J. Geophys. Res.,
 105 (A8), 18,655-18,673.
