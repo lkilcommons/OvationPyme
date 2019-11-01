@@ -2,6 +2,7 @@
 
 """
 import datetime
+from collections import OrderedDict
 
 import numpy as np
 import functools
@@ -24,7 +25,7 @@ def cache_omni_interval(func):
     new_interval_days_before_dt = 1.5
     new_interval_days_after_dt = 1.5
 
-    def _dt_within_range(oi,dt):
+    def _dt_within_range(dt,oi):
         """
         Check that dt is more than tol_hrs_before hours after the start of
         the omni_interval, and more that tol_hrs_after before the end of
@@ -35,13 +36,13 @@ def cache_omni_interval(func):
         in_after_range = ed_hrs_after_dt > tol_hrs_after
         return in_before_range and in_after_range
 
-    def cache_omni_interval_wrapper(dt,oi=None):
+    def cache_omni_interval_wrapper(dt):
 
-        print("Cached OMNI called for {}".format(dt))
+        #print("Cached OMNI called for {}".format(dt))
 
         if 'omni_interval' in cache:
             cached_oi = cache['omni_interval']
-            need_new_oi = not _dt_within_range(cached_oi,dt)
+            need_new_oi = not _dt_within_range(dt,cached_oi)
         else:
             need_new_oi = True
 
@@ -55,14 +56,16 @@ def cache_omni_interval(func):
                                             silent=True)
             #Save to cache
             cache['omni_interval'] = oi
-            print("Created new OI: {}-{}".format(oi.startdt,oi.enddt))
+            print("Created new solar wind interval: {}-{}".format(oi.startdt,
+                                                                    oi.enddt))
         else:
             #Load from cache
             oi = cache['omni_interval']
-            print("Using cached OI: {}-{}".format(oi.startdt,oi.enddt))
+            print("Using cached solar wind interval: {}-{}".format(oi.startdt,
+                                                                    oi.enddt))
 
 
-        return func(dt,oi=oi)
+        return func(dt,oi)
 
     return cache_omni_interval_wrapper
 
@@ -86,7 +89,31 @@ def calc_coupling(Bx, By, Bz, V):
     return Ec
 
 @cache_omni_interval
-def calc_avg_solarwind(dt,oi=None):
+def read_solarwind(dt,oi):
+    #Find closest time to dt in julian date instead of datetime
+    #(comparisons with arrays of datetime are slow)
+    if oi.cadence == 'hourly':
+        velvar, densvar = 'V', 'N'
+    else:
+        velvar, densvar = 'flow_speed', 'proton_density'
+
+    jd = special_datetime.datetimearr2jd(oi['Epoch']).flatten()
+    Bx, By, Bz = oi['BX_GSE'], oi['BY_GSM'], oi['BZ_GSM']
+    V,Ni = oi[velvar],oi[densvar]
+    Ec = calc_coupling(Bx, By, Bz, V)
+
+    sw = OrderedDict()
+    sw['jd']=jd
+    sw['Bx']=Bx
+    sw['By']=Bx
+    sw['Bz']=Bx
+    sw['V']=Bx
+    sw['Ni']=Ni
+    sw['Ec']=Ec
+    return sw
+
+@cache_omni_interval
+def calc_avg_solarwind(dt,oi):
     """
     Calculates a weighted average of several
     solar wind variables n_hours (4 by default) backward
@@ -100,17 +127,10 @@ def calc_avg_solarwind(dt,oi=None):
     n_hours = 4       # hours previous to integrate over
     prev_hour_weight = 0.65    # reduce weighting by factor of wh each hour back
 
-    if oi.cadence == 'hourly':
-        velvar, densvar = 'V', 'N'
-    else:
-        velvar, densvar = 'flow_speed', 'proton_density'
-
-    #Find closest time to dt in julian date instead of datetime (comparisons with arrays of datetime are slow)
     jd = special_datetime.datetime2jd(dt)
-    om_jd = special_datetime.datetimearr2jd(oi['Epoch'])
-    Bx, By, Bz = oi['BX_GSE'], oi['BY_GSM'], oi['BZ_GSM']
-    V,Ni = oi[velvar],oi[densvar]
-    Ec = calc_coupling(Bx, By, Bz, V)
+
+    sw = read_solarwind(dt)
+    om_jd = sw['jd']
 
     i_first = np.nanargmin(np.abs(om_jd-jd))
 
@@ -119,17 +139,17 @@ def calc_avg_solarwind(dt,oi=None):
     weights = [prev_hour_weight*n_hours_back for n_hours_back in reversed(list(range(n_hours+1)))] #reverse the list
 
     #Calculate weighted averages
-    avgsw = dict()
-    avgsw['Bx'] = np.nansum(Bx[om_in_avg]*weights)/len(om_in_avg)
-    avgsw['By'] = np.nansum(By[om_in_avg]*weights)/len(om_in_avg)
-    avgsw['Bz'] = np.nansum(Bz[om_in_avg]*weights)/len(om_in_avg)
-    avgsw['V'] = np.nansum(V[om_in_avg]*weights)/len(om_in_avg)
-    avgsw['Ec'] = np.nansum(Ec[om_in_avg]*weights)/len(om_in_avg)
+    avgsw = OrderedDict()
+    avgsw['Bx'] = np.nansum(sw['Bx'][om_in_avg]*weights)/len(om_in_avg)
+    avgsw['By'] = np.nansum(sw['By'][om_in_avg]*weights)/len(om_in_avg)
+    avgsw['Bz'] = np.nansum(sw['Bz'][om_in_avg]*weights)/len(om_in_avg)
+    avgsw['V'] = np.nansum(sw['V'][om_in_avg]*weights)/len(om_in_avg)
+    avgsw['Ec'] = np.nansum(sw['Ec'][om_in_avg]*weights)/len(om_in_avg)
 
     return avgsw
 
 @cache_omni_interval
-def get_daily_f107(dt,oi=None):
+def get_daily_f107(dt,oi):
     """
     Since OvationPyme uses hourly OMNI data
     I just do the mean for all of the 1 hour values for the day

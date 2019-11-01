@@ -165,7 +165,7 @@ class ConductanceEstimator(object):
     total electron energy flux
     (assumes a Maxwellian electron energy distribution)
     """
-    def __init__(self,fluxtypes=['diff', 'mono', 'wave']):
+    def __init__(self,fluxtypes=['diff']):
 
         #Use diffuse aurora only
         self.numflux_estimator = {}
@@ -786,9 +786,9 @@ class SeasonalFluxEstimator(object):
 
         for i_mlat_bin in np.flatnonzero(valid_interp_mlat_bins).tolist():
             #Technically any row in the MLT grid would do, but for consistancy use the i_mlat_bin-th one
-            this_mlat = mlatgridN[i_mlat_bin, 0]
-            this_mlt = mltgridN[i_mlat_bin, :]
-            this_flux = fluxgridN[i_mlat_bin, :]
+            this_mlat = mlatgridN[i_mlat_bin, 0].copy()
+            this_mlt = mltgridN[i_mlat_bin, :].copy()
+            this_flux = fluxgridN[i_mlat_bin, :].copy()
 
             #Change from 0-24 MLT to -12 to 12 MLT, so that there is no discontiunity at midnight
             #when we interpolate
