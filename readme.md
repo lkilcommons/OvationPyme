@@ -9,6 +9,12 @@ average energy. The model was based on data from the Defense Meteorology Satelli
 spacecraft, using data beginning in 1985. These spacecraft carry a particle detector (SSJ)
 which is sensitive to particles with characteristic energies between 30 eV and 30 keV.
 
+## Problems and limitations of Ovation Prime 2010
+These limitations are described in detail in [Newell et al. 2013](https://doi.org/10.1002/2014SW001056)
+1. Model produces large spurious values in some isolated bins (salt-and-pepper noise)
+2. Model is most valid for low to moderate geomagnetic activity (Kp<=6)
+3. Model is paramaterized to use hourly solar wind data (only one unique result per hour)
+
 ## Provenance of this implementation
 Ovation Pyme is a complete translation of the IDL (a proprietary programming language,
 owned by ExelisVis) version used by NOAA, which was released in an open source format 
@@ -23,9 +29,6 @@ the technique used by Ellen Cousins et. al. (2015), which uses the Robinson empe
 relationship mapping conductance to a function of total electron energy flux and average energy, using
 Ovation's diffuse aurora.
 2. Interpolation of data to arbitrary latitude and longitude grids
-
-## Future Features To Be Added (beyond IDL version):
-1. Spatial numerical derivatives of conductance (derivatives in magnetic latitude and magnetic local time directions).
 
 ## Verison Restrictions
 Use Python versions >= 2.7
