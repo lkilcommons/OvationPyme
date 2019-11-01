@@ -35,7 +35,6 @@ Use Python versions >= 2.7
 
 ## Installation Instructions
 1. Clone or download the [geospacepy-lite](https://github.com/lkilcommons/geospacepy-lite) library
-2. Edit the OMNI data download path in geospacepy-lite file geospacepy-config.py
 3. From the geospacepy-lite directory: `python setup.py install`
 4. Clone or download the OvationPyme repostiory
 5. From the OvationPyme directory: `python setup.py install`
