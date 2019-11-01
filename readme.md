@@ -1,18 +1,23 @@
 # Ovation Pyme
-## A pure-python implementation of the Ovation Prime auroral precipitation model
+## A pure-python implementation of the Ovation Prime 2010 auroral precipitation model
 
 ## Introduction to The Model
-Ovation Prime is a model which predicts the total energy flux, total number flux,
+Ovation Prime 2010, (described in [Newell et al., 2009](https://doi.org/10.1029/2009JA014326) and [Newell et al. 2010](https://doi.org/10.1029/2009JA014805)) is a model which predicts the total energy flux, total number flux,
 and average characteristic energy of precipitating electrons and ions in the polar regions.
 A Maxwellian particle energy (and velocity) distribution is assumed for the calculation of
 average energy. The model was based on data from the Defense Meteorology Satellite Program
 spacecraft, using data beginning in 1985. These spacecraft carry a particle detector (SSJ)
 which is sensitive to particles with characteristic energies between 30 eV and 30 keV.
-The original model was created by Patrick Newell et. al. (John Hopkins Applied Physics Laboratory)
+
+## Problems and limitations of Ovation Prime 2010
+These limitations are described in detail in [Newell et al. 2013](https://doi.org/10.1002/2014SW001056)
+1. Model produces large spurious values in some isolated bins (salt-and-pepper noise)
+2. Model is most valid for low to moderate geomagnetic activity (Kp<=6)
+3. Model is paramaterized to use hourly solar wind data (only one unique result per hour)
 
 ## Provenance of this implementation
 Ovation Pyme is a complete translation of the IDL (a proprietary programming language,
-owned by ExelisVis) version used by NOAA, which was released in an open source format 
+owned by ExelisVis) version released in an open source format on
 [Sourceforge](https://sourceforge.net/projects/ovation-prime/) by Janet Machol, Rob Redmon and Nathan Case
 of NOAA National Center for Environmental Information (NCEI). 
 __Contributions and comments are very welcome__.
@@ -25,15 +30,11 @@ relationship mapping conductance to a function of total electron energy flux and
 Ovation's diffuse aurora.
 2. Interpolation of data to arbitrary latitude and longitude grids
 
-## Future Features To Be Added (beyond IDL version):
-1. Spatial numerical derivatives of conductance (derivatives in magnetic latitude and magnetic local time directions).
-
 ## Verison Restrictions
 Use Python versions >= 2.7
 
 ## Installation Instructions
 1. Clone or download the [geospacepy-lite](https://github.com/lkilcommons/geospacepy-lite) library
-2. Edit the OMNI data download path in geospacepy-lite file geospacepy-config.py
 3. From the geospacepy-lite directory: `python setup.py install`
 4. Clone or download the OvationPyme repostiory
 5. From the OvationPyme directory: `python setup.py install`
@@ -46,7 +47,7 @@ directory.
 Functional tests (which make several plots to show things are working properly) 
 can be run by calling the package's test_plots.py as a script.
 i.e. from the command line run:
-`python ovationpyme/functionaltests.py`
+`python ovationpyme/visual_test_ovation_prime.py`
 
 The current test plots are:
 
@@ -75,7 +76,9 @@ magnetosphere coupling function inferred from 10 magnetospheric state variables,
 112, A01206, doi:10.1029/2006JA012015.
 
 - Newell, P. T., T. Sotirelis, and S. Wing (2009), Diffuse, monoenergetic, and broadband aurora: The global
-precipitation budget, J. Geophys. Res., 114, A09207, doi:10.1029/2009JA014326.Newell, P. T., T. Sotirelis, and S. Wing (2010), Seasonal variations in diffuse, monoenergetic, and broadband aurora, J. Geophys. Res., 115, A03216, doi:10.1029/2009JA014805.
+precipitation budget, J. Geophys. Res., 114, A09207, doi:10.1029/2009JA014326.
+
+- Newell, P. T., T. Sotirelis, and S. Wing (2010), Seasonal variations in diffuse, monoenergetic, and broadband aurora, J. Geophys. Res., 115, A03216, doi:10.1029/2009JA014805.
 
 - Sotirelis, T. and P. T. Newell (2000), "Boundary-oriented electron precipitation model," J. Geophys. Res.,
 105 (A8), 18,655-18,673.
