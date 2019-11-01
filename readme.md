@@ -48,7 +48,7 @@ directory.
 Functional tests (which make several plots to show things are working properly) 
 can be run by calling the package's test_plots.py as a script.
 i.e. from the command line run:
-`python ovationpyme/functionaltests.py`
+`python ovationpyme/visual_test_ovation_prime.py`
 
 The current test plots are:
 
