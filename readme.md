@@ -13,7 +13,7 @@ which is sensitive to particles with characteristic energies between 30 eV and 3
 Ovation Pyme is a complete translation of the IDL (a proprietary programming language,
 owned by ExelisVis) version released in an open source format on
 [Sourceforge](https://sourceforge.net/projects/ovation-prime/) by Janet Machol, Rob Redmon and Nathan Case
-of NOAA National Center for Environmental Information (NCEI). This code has not been peer-reviewed. Errors may exist.
+of NOAA National Center for Environmental Information (NCEI).
 __Contributions and comments are very welcome__.
 
 ## Problems and limitations of Ovation Prime 2010
