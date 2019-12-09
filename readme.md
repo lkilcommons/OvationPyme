@@ -9,18 +9,18 @@ average energy. The model was based on data from the Defense Meteorology Satelli
 spacecraft, using data beginning in 1985. These spacecraft carry a particle detector (SSJ)
 which is sensitive to particles with characteristic energies between 30 eV and 30 keV.
 
+## Provenance of this implementation
+Ovation Pyme is a complete translation of the IDL (a proprietary programming language,
+owned by ExelisVis) version released in an open source format on
+[Sourceforge](https://sourceforge.net/projects/ovation-prime/) by Janet Machol, Rob Redmon and Nathan Case
+of NOAA National Center for Environmental Information (NCEI). This code has not been peer-reviewed. Errors may exist.
+__Contributions and comments are very welcome__.
+
 ## Problems and limitations of Ovation Prime 2010
 These limitations are described in detail in [Newell et al. 2013](https://doi.org/10.1002/2014SW001056)
 1. Model produces large spurious values in some isolated bins (salt-and-pepper noise)
 2. Model is most valid for low to moderate geomagnetic activity (Kp<=6)
 3. Model is paramaterized to use hourly solar wind data (only one unique result per hour)
-
-## Provenance of this implementation
-Ovation Pyme is a complete translation of the IDL (a proprietary programming language,
-owned by ExelisVis) version released in an open source format on
-[Sourceforge](https://sourceforge.net/projects/ovation-prime/) by Janet Machol, Rob Redmon and Nathan Case
-of NOAA National Center for Environmental Information (NCEI). 
-__Contributions and comments are very welcome__.
 
 ## Differences in this implementation compared to the IDL version
 
