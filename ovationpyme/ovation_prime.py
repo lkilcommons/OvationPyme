@@ -4,6 +4,7 @@ Ovation Prime (historically called season_epoch.pro)
 """
 import os
 import datetime
+from collections import OrderedDict
 
 import numpy as np
 from scipy import interpolate
@@ -391,16 +392,57 @@ class FluxEstimator(object):
             if not jtype_atype_ok:
                 raise RuntimeError('Auroral and flux type of SeasonalFluxEstimators do not match {0} and {1}!'.format(self.atype,self.jtype))
 
-    def get_season_fluxes(self, dF):
+    def season_weights(self,doy):
+        """
+        Determines the relative weighting of the
+        model coeffecients for the various seasons for a particular
+        day of year (doy). Nominally, weights the seasons
+        based on the difference between the doy and the peak
+        of the season (solstice/equinox)
+
+        Returns:
+            a dictionary with a key for each season.
+            Each value in the dicionary is a float between 0 and 1
+        """
+        weight = OrderedDict(winter=0.,
+                            spring=0.,
+                            summer=0.,
+                            fall=0.)
+
+        if doy >= 79. and doy < 171:
+           weight['summer'] = 1. - (171.-doy)/92.
+           weight['spring'] = 1. - weight['summer']
+
+        elif doy >= 171. and doy < 263.:
+           weight['fall'] = 1. - (263.-doy)/92.
+           weight['summer'] = 1. - weight['fall']
+
+        elif doy >= 263. and doy < 354.:
+           weight['winter'] = 1. - (354.-doy)/91.
+           weight['fall'] = 1. - weight['winter']
+
+        elif doy >= 354 or doy < 79:
+            #For days of year > 354, subtract 365 to get negative
+            #day of year values for computation
+            doy0 = doy- 365. if doy >= 354 else doy
+            weight['spring'] = 1. - (79.-doy0)/90.
+            weight['winter'] = 1. - weight['spring']
+
+        return weight
+
+    def get_season_fluxes(self, dF, weights):
         """
         Extract the flux for each season and hemisphere and
         store them in a dictionary
         Return positive latitudes, since northern and southern
         latitude/localtime grids are the same
         """
-        seasonfluxesN,seasonfluxesS = {},{}
+        seasonfluxesN,seasonfluxesS = OrderedDict(),OrderedDict()
         gridmlats,gridmlts = None,None
         for season,estimator in self.seasonal_flux_estimators.items():
+            if weights[season]==0.:
+                continue #Skip calculation for seasons with zero weight
+
             flux_outs = estimator.get_gridded_flux(dF)
             gridmlatsN,gridmltsN,gridfluxN = flux_outs[:3]
             gridmlatsS,gridmltsS,gridfluxS = flux_outs[3:]
@@ -462,12 +504,17 @@ class FluxEstimator(object):
                    +'produce accurate results for a particular date'))
             dF = self._dF
 
-        season_fluxes_outs = self.get_season_fluxes(dF)
+        season_fluxes_outs = self.get_season_fluxes(dF,weights)
         grid_mlats,grid_mlts,seasonfluxesN,seasonfluxesS = season_fluxes_outs
 
-        gridflux = np.zeros_like(seasonfluxesN['summer'])
+        gridflux = np.zeros_like(grid_mlats)
         for season,W in weights.items():
-            gridfluxN,gridfluxS = seasonfluxesN[season],seasonfluxesS[season]
+            if W==0.:
+                continue
+            
+            gridfluxN = seasonfluxesN[season]
+            gridfluxS = seasonfluxesS[season]
+
             if combine_hemispheres:
                 gridflux += W*(gridfluxN+gridfluxS)/2
             elif hemi=='N':
@@ -483,70 +530,41 @@ class FluxEstimator(object):
         else:
             return grid_mlats,grid_mlts,gridflux,dF
 
-    def season_weights(self,doy):
-        """
-        Determines the relative weighting of the
-        model coeffecients for the various seasons for a particular
-        day of year (doy). Nominally, weights the seasons
-        based on the difference between the doy and the peak
-        of the season (solstice/equinox)
-
-        Returns:
-            a dictionary with a key for each season.
-            Each value in the dicionary is a float between 0 and 1
-        """
-        weight = {'winter':0.,'spring':0.,'summer':0.,'fall':0.}
-        winter_w,spring_w,summer_w,fall_w = 0.,0.,0.,0.
-
-        if doy >= 79. and doy < 171:
-           weight['summer'] = 1. - (171.-doy)/92.
-           weight['spring'] = 1. - weight['summer']
-
-        elif doy >= 171. and doy < 263.:
-           weight['fall'] = 1. - (263.-doy)/92.
-           weight['summer'] = 1. - weight['fall']
-
-        elif doy >= 263. and doy < 354.:
-           weight['winter'] = 1. - (354.-doy)/91.
-           weight['fall'] = 1. - weight['winter']
-
-        elif doy >= 354 or doy < 79:
-            #For days of year > 354, subtract 365 to get negative
-            #day of year values for computation
-            doy0 = doy- 365. if doy >= 354 else doy
-            weight['spring'] = 1. - (79.-doy0)/90.
-            weight['winter'] = 1. - weight['spring']
-
-        return weight
-
 class SeasonalFluxEstimator(object):
     """
     A class to hold and caculate predictions from the regression coeffecients
     which are tabulated in the data/premodel/{season}_{atype}_*.txt
     files.
 
-    Given a particular season, type of aurora ( one of ['diff','mono','wave','ions'])
+    Given a particular season, type of aurora ( one of ['diff','mono','wave'])
     and type of flux, returns
     """
 
+    _valid_atypes = ['diff', 'mono', 'wave','ions']
+    
     def __init__(self, season, atype, energy_or_number):
         """
         season - str,['winter','spring','summer','fall']
             season for which to load regression coeffients
 
         atype - str, ['diff','mono','wave','ions']
-            type of aurora for which to load regression coeffients
+            type of aurora for which to load regression coeffients, ions
+            are not implemented
 
         energy_or_number - str, ['energy','number']
             type of flux you want to estimate
         """
 
-        nmlt = 96                           #number of mag local times in arrays (resolution of 15 minutes)
-        nmlat = 160                         #number of mag latitudes in arrays (resolution of 1/4 of a degree (.25))
-        ndF = 12                                                        #number of coupling strength bins
+        nmlt = 96   #number of mag local times in arrays (resolution of 15 minutes)
+        nmlat = 160 #number of mag latitudes in arrays (resolution of 1/4 of a degree (.25))
+        ndF = 12    #number of coupling strength bins
+        
         self.n_mlt_bins, self.n_mlat_bins, self.n_dF_bins = nmlt, nmlat, ndF
 
         self.atype = atype
+        if atype not in self._valid_atypes:
+            raise ValueError(('Not a valid aurora type {}.'.format(atype)
+                             +'valid values {}'.format(self._valid_atypes)))
 
         #Check for legacy values of this argument
         _check_for_old_jtype(self,energy_or_number)
@@ -572,7 +590,6 @@ class SeasonalFluxEstimator(object):
         # d0 = 1
         # files_done = 0
         # sf0 = 0
-        self.valid_atypes = ['diff', 'mono', 'wave', 'ions']
 
         with open(self.afile, 'r') as f:
             aheader = f.readline() # y0,d0,yend,dend,files_done,sf0
@@ -581,6 +598,9 @@ class SeasonalFluxEstimator(object):
             adata = np.genfromtxt(f, max_rows=nmlat*nmlt)
             #print "First line was %s" % (str(adata[0,:]))
 
+        #These are the coefficients for each bin which are used
+        #in the predicted flux calulation for electron auroral types
+        #and for ions
         self.b1a, self.b2a = np.zeros((nmlt, nmlat)), np.zeros((nmlt, nmlat))
         self.b1a.fill(np.nan)
         self.b2a.fill(np.nan)
@@ -588,14 +608,16 @@ class SeasonalFluxEstimator(object):
         self.b1a[mlt_bin_inds, mlat_bin_inds] = adata[:, 2]
         self.b2a[mlt_bin_inds, mlat_bin_inds] = adata[:, 3]
 
-        self.b1p, self.b2p = np.zeros((nmlt, nmlat)), np.zeros((nmlt, nmlat))
-        self.prob = np.zeros((nmlt, nmlat, ndF))
-        self.b1p.fill(np.nan)
-        self.b2p.fill(np.nan)
-        self.prob.fill(np.nan)
+        self.b1p = np.full((nmlt, nmlat),np.nan)
+        self.b2p = np.full((nmlt, nmlat),np.nan)
+        self.prob = np.full((nmlt, nmlat, ndF),np.nan)
+        
         #pdata has 2 columns, b1, b2 for first 15361 rows
         #pdata has nmlat*nmlt rows (one for each positional bin)
 
+        #Electron auroral types also include a probability in their
+        #predicted flux calculations (related to the probability of
+        #observing one type of aurora versus another)
         if atype in ['diff', 'mono', 'wave']:
             with open(self.pfile, 'r') as f:
                 pheader = f.readline() #y0,d0,yend,dend,files_done,sf0
@@ -608,7 +630,6 @@ class SeasonalFluxEstimator(object):
             #varying fastest (this is Fortran indexing order)
             pdata_p_column_dFbin = pdata_p.reshape((-1, ndF), order='F')
 
-            #I don't know why this is not used for atype 'ions'
             #mlt is first dimension
             self.b1p[mlt_bin_inds, mlat_bin_inds]=pdata_b[:, 0]
             self.b2p[mlt_bin_inds, mlat_bin_inds]=pdata_b[:, 1]
@@ -676,7 +697,12 @@ class SeasonalFluxEstimator(object):
         estimates the flux using the regression coeffecients in the 'a' files
         """
         b1, b2 = self.b1a[i_mlt_bin, i_mlat_bin], self.b2a[i_mlt_bin, i_mlat_bin]
-        p = self.prob_estimate(dF, i_mlt_bin, i_mlat_bin)
+        #There are no spectral types for ions, so there is no need
+        #to weight the predicted flux by a probability
+        if self.atype == 'ions':
+            p = 1.
+        else:
+            p = self.prob_estimate(dF, i_mlt_bin, i_mlat_bin)
         #print(p, b1, b2, dF)
         flux = (b1+b2*dF)*p
         return self.correct_flux(flux)

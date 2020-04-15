@@ -56,13 +56,14 @@ def cache_omni_interval(func):
                                             silent=True)
             #Save to cache
             cache['omni_interval'] = oi
-            print("Created new solar wind interval: {}-{}".format(oi.startdt,
-                                                                    oi.enddt))
+            # print("Created new solar wind interval: {}-{}".format(oi.startdt,
+            #                                                         oi.enddt))
         else:
             #Load from cache
             oi = cache['omni_interval']
-            print("Using cached solar wind interval: {}-{}".format(oi.startdt,
-                                                                    oi.enddt))
+            
+            # print("Using cached solar wind interval: {}-{}".format(oi.startdt,
+            #                                                         oi.enddt))
 
 
         return func(dt,oi)
