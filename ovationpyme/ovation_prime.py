@@ -287,8 +287,16 @@ class ConductanceEstimator(object):
         #Convert from magnetic to geocentric using the AACGMv2 python library
         flatmlats,flatmlts = mlats.flatten(),mlts.flatten()
         flatmlons = aacgmv2.convert_mlt(flatmlts, dt, m2a=True)
-        glats,glons = aacgmv2.convert(flatmlats, flatmlons, 110.*np.ones_like(flatmlats),
-                                        date=dt, a2g=True, geocentric=False)
+        try:
+            glats,glons = aacgmv2.convert(flatmlats, flatmlons, 110.*np.ones_like(flatmlats),
+                                            date=dt, a2g=True, geocentric=False)
+        except AttributeError:
+            #convert method was deprecated
+            glats,glons,r = aacgmv2.convert_latlon_arr(flatmlats,
+                                                        flatmlons,
+                                                        110.,
+                                                        dt,
+                                                        method_code='A2G')
 
         sigp,sigh = brekke_moen_solar_conductance(dt,glats,glons,f107)
 

@@ -45,7 +45,7 @@ if __name__ == '__main__':
             csv_row_data.append(dtstr)
             for atype in atypes:
                 for hemi in ['N','S']:
-                    outs = estimators[atype].get_flux_for_time(dt,hemi=hemi) 
+                    outs = estimators[atype].get_flux_for_time(dt,hemi=hemi)
                     grid_mlats,grid_mlts,energy_flux = outs
                     #Integrate flux over bins
                     intflux = grid_surface_integral(grid_mlats,grid_mlts,energy_flux,
