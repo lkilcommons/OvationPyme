@@ -231,7 +231,7 @@ def brekke_moen_solar_conductance(dt,glats,glons,f107):
         f107, float
             F10.7 index (daily) used to calcuate solar conductance
     """
-    szas_rad = sun.solar_zenith_angle(dt, glats, glons)
+    szas_rad = sun.solar_zenith_angle(special_datetime.datetime2jd(dt), glats, glons)
     szas = np.rad2deg(szas_rad)
 
     sigp,sigh = np.zeros_like(glats),np.zeros_like(glats)
