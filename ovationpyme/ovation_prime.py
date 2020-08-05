@@ -15,7 +15,7 @@ from ovationpyme.ovation_utilities import robinson_auroral_conductance
 from ovationpyme.ovation_utilities import brekke_moen_solar_conductance
 
 import geospacepy
-from geospacepy import special_datetime,astrodynamics2,satplottools
+from geospacepy import special_datetime,sun,satplottools
 import aacgmv2 #available on pip
 #import apexpy
 
