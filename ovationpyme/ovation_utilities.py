@@ -7,7 +7,8 @@ from collections import OrderedDict
 import numpy as np
 import functools
 
-from geospacepy import omnireader, special_datetime, astrodynamics2
+from geospacepy import special_datetime, sun
+from nasaomnireader.omnireader import omni_interval
 
 _ovation_prime_omni_cadence = 'hourly' #Ovation Prime was created using hourly SW
 
@@ -230,9 +231,8 @@ def brekke_moen_solar_conductance(dt,glats,glons,f107):
         f107, float
             F10.7 index (daily) used to calcuate solar conductance
     """
-
-    szas = astrodynamics2.solar_zenith_angle(dt, glats, glons)
-    szas_rad = szas/180.*np.pi
+    szas_rad = sun.solar_zenith_angle(dt, glats, glons)
+    szas = np.rad2deg(szas_rad)
 
     sigp,sigh = np.zeros_like(glats),np.zeros_like(glats)
 
