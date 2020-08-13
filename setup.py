@@ -15,7 +15,7 @@ setup(name='ovationpyme',
       description = "Ovation Prime Auroral Model",
       #author = "VT SuperDARN Lab and friends",
       #author_email = "ajribeiro86@gmail.com",
-      author = "Liam Kilcommons / AMIEPy Project (Tomoko Matsuo, PI)",
+      author = "Liam Kilcommons",
       author_email = 'liam.kilcommons@colorado.edu',
       url = "https://bitbucket.org/amienext/ovationpyme",
       download_url = "https://bitbucket.org/amienext/ovationpyme",
@@ -23,7 +23,7 @@ setup(name='ovationpyme',
       " auroral particle flux model originally created by Newell et al (JHU)"+\
       " and packaged on Sourceforge by Redmon (NOAA NCEI), Machol, and Case "+\
       " for more information visit: https://sourceforge.net/projects/ovation-prime/",
-      install_requires=['numpy','matplotlib','aacgmv2'],
+      install_requires=['numpy','matplotlib','aacgmv2','geospacepy'],
       packages=['ovationpyme'],
       package_dir={'ovationpyme' : 'ovationpyme'},
       package_data={'ovationpyme': ['data/premodel/*.txt']}, #data names must be list
