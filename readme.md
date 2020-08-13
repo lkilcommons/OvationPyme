@@ -34,8 +34,8 @@ Ovation's diffuse aurora.
 Use Python versions >= 2.7
 
 ## Installation Instructions
-1. Clone or download the [geospacepy-lite](https://github.com/lkilcommons/geospacepy-lite) library
-3. From the geospacepy-lite directory: `python setup.py install`
+1. Clone or download the [nasaomnireader](https://github.com/lkilcommons/nasaomnireader) library
+3. From the nasaomnireader directory: `python setup.py install`
 4. Clone or download the OvationPyme repostiory
 5. From the OvationPyme directory: `python setup.py install`
 
