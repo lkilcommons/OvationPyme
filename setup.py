@@ -17,8 +17,8 @@ setup(name='ovationpyme',
       #author_email = "ajribeiro86@gmail.com",
       author = "Liam Kilcommons",
       author_email = 'liam.kilcommons@colorado.edu',
-      url = "https://bitbucket.org/amienext/ovationpyme",
-      download_url = "https://bitbucket.org/amienext/ovationpyme",
+      url = "https://github.com/lkilcommons/ovationpyme",
+      download_url = "https://github.com/lkilcommons/ovationpyme",
       long_description = "This is a Python port of the IDL implementation of Ovation Prime"+\
       " auroral particle flux model originally created by Newell et al (JHU)"+\
       " and packaged on Sourceforge by Redmon (NOAA NCEI), Machol, and Case "+\
