@@ -23,7 +23,7 @@ setup(name='ovationpyme',
       " auroral particle flux model originally created by Newell et al (JHU)"+\
       " and packaged on Sourceforge by Redmon (NOAA NCEI), Machol, and Case "+\
       " for more information visit: https://sourceforge.net/projects/ovation-prime/",
-      install_requires=['numpy','matplotlib','aacgmv2','geospacepy'],
+      install_requires=['numpy','matplotlib','aacgmv2','geospacepy','logbook'],
       packages=['ovationpyme'],
       package_dir={'ovationpyme' : 'ovationpyme'},
       package_data={'ovationpyme': ['data/premodel/*.txt']}, #data names must be list

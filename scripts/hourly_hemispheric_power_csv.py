@@ -20,8 +20,8 @@ if __name__ == '__main__':
     for atype in atypes:
         estimators[atype]=FluxEstimator(atype,energy_or_number)
 
-    startdt = datetime.datetime(2003,1,1)
-    enddt = datetime.datetime(2004,1,1)
+    startdt = datetime.datetime(2015,1,1)
+    enddt = datetime.datetime(2016,1,1)-datetime.timedelta(days=1)
 
     fn = 'ovationpyme_hourly_hemispheric_power_{}.csv'.format(startdt.year)
     homedir = os.path.expanduser('~/')

@@ -9,10 +9,12 @@ import functools
 
 from geospacepy import special_datetime, sun
 from nasaomnireader.omnireader import omni_interval
+from logbook import Logger
+log = Logger('OvationPyme.ovation_utilites')
 
-_ovation_prime_omni_cadence = 'hourly' #Ovation Prime was created using hourly SW
+#_ovation_prime_omni_cadence = 'hourly' #Ovation Prime was created using hourly SW
 
-def cache_omni_interval(func):
+def cache_omni_interval(cadence):
     """Decorator which decorates functions with call signature
     func(dt,oi) which calculate something from a given omni interval
     Implements on-the-fly creation of an omni_interval, cacheing it
@@ -21,55 +23,57 @@ def cache_omni_interval(func):
     """
     cache = {}
 
-    tol_hrs_before=4
-    tol_hrs_after=1
-    new_interval_days_before_dt = 1.5
-    new_interval_days_after_dt = 1.5
+    def cache_omni_interval_decorator(func):
+        
+        tol_hrs_before=4
+        tol_hrs_after=1
+        new_interval_days_before_dt = 1.5
+        new_interval_days_after_dt = 1.5
 
-    def _dt_within_range(dt,oi):
-        """
-        Check that dt is more than tol_hrs_before hours after the start of
-        the omni_interval, and more that tol_hrs_after before the end of
-        """
-        st_hrs_before_dt = (dt-oi.startdt).total_seconds()/3600.
-        ed_hrs_after_dt = (oi.enddt-dt).total_seconds()/3600.
-        in_before_range = st_hrs_before_dt > tol_hrs_before
-        in_after_range = ed_hrs_after_dt > tol_hrs_after
-        return in_before_range and in_after_range
+        def _dt_within_range(dt,oi):
+            """
+            Check that dt is more than tol_hrs_before hours after the start of
+            the omni_interval, and more that tol_hrs_after before the end of
+            """
+            st_hrs_before_dt = (dt-oi.startdt).total_seconds()/3600.
+            ed_hrs_after_dt = (oi.enddt-dt).total_seconds()/3600.
+            in_before_range = st_hrs_before_dt > tol_hrs_before
+            in_after_range = ed_hrs_after_dt > tol_hrs_after
+            return in_before_range and in_after_range
 
-    def cache_omni_interval_wrapper(dt):
+        def cache_omni_interval_wrapper(dt):
 
-        #print("Cached OMNI called for {}".format(dt))
+            #print("Cached OMNI called for {}".format(dt))
 
-        if 'omni_interval' in cache:
-            cached_oi = cache['omni_interval']
-            need_new_oi = not _dt_within_range(dt,cached_oi)
-        else:
-            need_new_oi = True
+            if 'omni_interval_{}'.format(cadence) in cache:
+                cached_oi = cache['omni_interval_{}'.format(cadence)]
+                need_new_oi = not _dt_within_range(dt,cached_oi)
+            else:
+                need_new_oi = True
 
-        if need_new_oi:
-            startdt = dt-datetime.timedelta(days=new_interval_days_before_dt)
-            enddt = dt+datetime.timedelta(days=new_interval_days_after_dt)
+            if need_new_oi:
+                startdt = dt-datetime.timedelta(days=new_interval_days_before_dt)
+                enddt = dt+datetime.timedelta(days=new_interval_days_after_dt)
 
-            oi = omni_interval(startdt,
-                                            enddt,
-                                            _ovation_prime_omni_cadence,
-                                            silent=True)
-            #Save to cache
-            cache['omni_interval'] = oi
-            # print("Created new solar wind interval: {}-{}".format(oi.startdt,
-            #                                                         oi.enddt))
-        else:
-            #Load from cache
-            oi = cache['omni_interval']
-            
-            # print("Using cached solar wind interval: {}-{}".format(oi.startdt,
-            #                                                         oi.enddt))
+                oi = omni_interval(startdt,enddt,cadence,silent=True)
+
+                #Save to cache
+                cache['omni_interval_{}'.format(cadence)] = oi
+                log.debug("Created new solar wind interval: {}-{}".format(oi.startdt,
+                                                                        oi.enddt))
+            else:
+                #Load from cache
+                oi = cache['omni_interval_{}'.format(cadence)]
+                
+                log.debug("Using cached solar wind interval: {}-{}".format(oi.startdt,
+                                                                        oi.enddt))
 
 
-        return func(dt,oi)
+            return func(dt,oi)
 
-    return cache_omni_interval_wrapper
+        return cache_omni_interval_wrapper
+
+    return cache_omni_interval_decorator
 
 def calc_coupling(Bx, By, Bz, V):
     """
@@ -90,31 +94,67 @@ def calc_coupling(Bx, By, Bz, V):
     Ec = (V**1.33333)*(sintc**2.66667)*(BT**0.66667)
     return Ec
 
-@cache_omni_interval
+@cache_omni_interval('1min')
 def read_solarwind(dt,oi):
-    #Find closest time to dt in julian date instead of datetime
-    #(comparisons with arrays of datetime are slow)
+    """Get the solar wind parameters involved in the Newell coupling
+    function at an hourly cadence (regardless of the cadence of the
+    omni_interval input oi)
+    """
     if oi.cadence == 'hourly':
         velvar, densvar = 'V', 'N'
     else:
         velvar, densvar = 'flow_speed', 'proton_density'
 
-    jd = special_datetime.datetimearr2jd(oi['Epoch']).flatten()
-    Bx, By, Bz = oi['BX_GSE'], oi['BY_GSM'], oi['BZ_GSM']
-    V,Ni = oi[velvar],oi[densvar]
-    Ec = calc_coupling(Bx, By, Bz, V)
+    #Variable name/key for return dict and associated omni_interval key
+    swvars = OrderedDict(Bx='BX_GSE',
+                         By='BY_GSM',
+                         Bz='BZ_GSM',
+                         V=velvar,
+                         Ni=densvar)
 
-    sw = OrderedDict()
-    sw['jd']=jd
-    sw['Bx']=Bx
-    sw['By']=Bx
-    sw['Bz']=Bx
-    sw['V']=Bx
-    sw['Ni']=Ni
-    sw['Ec']=Ec
+    sw = OrderedDict() 
+    sw['jd']=special_datetime.datetimearr2jd(oi['Epoch']).flatten()
+    for swkey,oikey in swvars.items():
+        sw[swkey]=oi[oikey]
+
+    #Newell coupling    
+    sw['Ec']=calc_coupling(sw['Bx'], sw['By'], sw['Bz'], sw['V'])
     return sw
 
-@cache_omni_interval
+@cache_omni_interval('1min')
+def hourly_solarwind_for_average(dt,oi):
+    """
+    Takes a solarwind (sw) OrderedDict (output of read_solarwind)
+    made using omni data at a sub-hourly cadence (5min or 1min),
+    and averages the data to an hourly cadence relative to time dt
+    (dt must be within the range of the data in sw). Returns a
+    new OrderedDict with 'n_hours_in_average' values for each
+    solar wind parameter
+    """
+    n_hours_in_average = 4 #number of hourly datapoints (4 previous)
+    
+    target_jd = special_datetime.datetime2jd(dt)
+    
+    sw = read_solarwind(dt)
+
+    #Julian date in days to time relative to target time in hours
+    #with positive values indicating time before the target
+    hours_before_target = -1*(sw['jd']-target_jd)*24.
+    
+    sw4avg = OrderedDict()
+    for swkey,swdata in sw.items():
+        hourly_swdata = []
+        for hour in range(n_hours_in_average)[::-1]:
+            hourmask = np.logical_and(hours_before_target>=hour,
+                                      hours_before_target<(hour+1))    
+            if swkey == 'jd':
+                hourly_swdata.append(np.nanmax(swdata[hourmask]))
+            else:
+                hourly_swdata.append(np.nanmean(swdata[hourmask]))
+        sw4avg[swkey]=np.array(hourly_swdata)
+    return sw4avg
+
+@cache_omni_interval('1min')
 def calc_avg_solarwind(dt,oi):
     """
     Calculates a weighted average of several
@@ -126,31 +166,23 @@ def calc_avg_solarwind(dt,oi):
     instance from which to read the data. If this
     is None (default), will create a new omni_interval
     """
-    n_hours = 4       # hours previous to integrate over
-    prev_hour_weight = 0.65    # reduce weighting by factor of wh each hour back
+    prev_hour_weight=0.65
 
-    jd = special_datetime.datetime2jd(dt)
-
-    sw = read_solarwind(dt)
-    om_jd = sw['jd']
-
-    i_first = np.nanargmin(np.abs(om_jd-jd))
-
-    #Get indicies of all data in the average
-    om_in_avg = list(range(i_first-n_hours, i_first+1))
-    weights = [prev_hour_weight*n_hours_back for n_hours_back in reversed(list(range(n_hours+1)))] #reverse the list
+    sw4avg = hourly_solarwind_for_average(dt)
+    n = sw4avg['jd'].size #Number of hourly datapoints to be averaged
+    weights = [prev_hour_weight**n_hours_back for n_hours_back in range(n)[::-1]] #reverse the range
 
     #Calculate weighted averages
     avgsw = OrderedDict()
-    avgsw['Bx'] = np.nansum(sw['Bx'][om_in_avg]*weights)/len(om_in_avg)
-    avgsw['By'] = np.nansum(sw['By'][om_in_avg]*weights)/len(om_in_avg)
-    avgsw['Bz'] = np.nansum(sw['Bz'][om_in_avg]*weights)/len(om_in_avg)
-    avgsw['V'] = np.nansum(sw['V'][om_in_avg]*weights)/len(om_in_avg)
-    avgsw['Ec'] = np.nansum(sw['Ec'][om_in_avg]*weights)/len(om_in_avg)
+    avgsw['Bx'] = np.nansum(sw4avg['Bx']*weights)/len(weights)
+    avgsw['By'] = np.nansum(sw4avg['By']*weights)/len(weights)
+    avgsw['Bz'] = np.nansum(sw4avg['Bz']*weights)/len(weights)
+    avgsw['V'] = np.nansum(sw4avg['V']*weights)/len(weights)
+    avgsw['Ec'] = np.nansum(sw4avg['Ec']*weights)/len(weights)
 
     return avgsw
 
-@cache_omni_interval
+@cache_omni_interval('hourly')
 def get_daily_f107(dt,oi):
     """
     Since OvationPyme uses hourly OMNI data

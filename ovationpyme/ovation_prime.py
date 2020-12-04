@@ -18,6 +18,8 @@ import geospacepy
 from geospacepy import special_datetime,sun,satplottools
 import aacgmv2 #available on pip
 #import apexpy
+from logbook import Logger
+log = Logger('OvationPyme.ovation_prime')
 
 #Determine where this module's source file is located
 #to determine where to look for the tables
@@ -101,7 +103,7 @@ class BinCorrector(object):
         for i_mlat, mlat in enumerate(self.mlats):
             if not(np.abs(mlat)>=min_mlat and np.abs(mlat)<=max_mlat):
                 if debug:
-                    print('MLAT ring at {0} mlat is not between'.format(mlat)
+                    log.debug('MLAT ring at {0} mlat is not between'.format(mlat)
                               +' {0} and {1}'.format(min_mlat, max_mlat)
                               +' skipping')
                 continue
@@ -182,8 +184,8 @@ class ConductanceEstimator(object):
         """
         Compute total conductance using Robinson formula and emperical solar conductance model
         """
-        print("Getting conductance with solar {0}, aurora {1}, fluxtypes {2}, background_ped: {3}, background_hall {4}".format(solar,
-                auroral, conductance_fluxtypes, background_p, background_h))
+        log.notice("Getting conductance with solar {0}, aurora {1}, fluxtypes {2}, background_ped: {3}, background_hall {4}".format(solar,
+                    auroral, conductance_fluxtypes, background_p, background_h))
 
         all_sigp_auroral, all_sigh_auroral = [], []
         #Create a bin interpolation corrector
@@ -276,7 +278,7 @@ class ConductanceEstimator(object):
         #to the current time to specifiy the conductance
         f107 = ovation_utilities.get_daily_f107(dt)
         if hasattr(self,'_f107'):
-            print(('Warning: Overriding real F107 {0}'.format(f107)
+            log.warning(('Warning: Overriding real F107 {0}'.format(f107)
                    +'with secret instance property _f107 {0}'.format(self._f107)
                    +'this is for debugging and will not'
                    +'produce accurate results for a particular date.'))
@@ -335,14 +337,14 @@ class AverageEnergyEstimator(object):
         n_pts = len(grideavg.flatten())
         n_low_numflux = np.count_nonzero(gridnumflux<self.numflux_threshold)
         grideavg[gridnumflux<self.numflux_threshold]=0.
-        print(('Zeroed {:d}/{:d} average energies'.format(n_low_numflux,n_pts)
+        log.debug(('Zeroed {:d}/{:d} average energies'.format(n_low_numflux,n_pts)
               +'with numflux below {:e}'.format(self.numflux_threshold)))
 
         #Limit to DMSP SSJ channels range
         n_over = np.count_nonzero(grideavg>30)
         n_under = np.count_nonzero(grideavg<.5)
-        print('Zeroed {:d}/{:d} average energies over 30 keV'.format(n_over,n_pts))
-        print('Zeroed {:d}/{:d} average energies under .2 keV'.format(n_under,n_pts))
+        log.debug('Zeroed {:d}/{:d} average energies over 30 keV'.format(n_over,n_pts))
+        log.debug('Zeroed {:d}/{:d} average energies under .2 keV'.format(n_under,n_pts))
         grideavg[grideavg>30.]=30.#Max of 30keV
         grideavg[grideavg<.2]=0. #Min of 1 keV
 
@@ -494,8 +496,8 @@ class FluxEstimator(object):
         doy = dt.timetuple().tm_yday
 
         if not combine_hemispheres:
-            print(('Warning: IDL version of OP2010 always combines hemispheres.'
-                  +'know what you are doing before switching this behavior'))
+            log.warning(('Warning: IDL version of OP2010 always combines hemispheres.'
+                        +'know what you are doing before switching this behavior'))
 
         if hemi=='N':
             weights = self.season_weights(doy)
@@ -506,10 +508,10 @@ class FluxEstimator(object):
 
         dF = ovation_utilities.calc_dF(dt)
         if hasattr(self,'_dF'):
-            print(('Warning: Overriding real Newell Coupling {0}'.format(dF)
-                   +'with secret instance property _dF {0}'.format(self._dF)
-                   +'this is for debugging and will not'
-                   +'produce accurate results for a particular date'))
+            log.warning(('Warning: Overriding real Newell Coupling {0}'.format(dF)
+                           +'with secret instance property _dF {0}'.format(self._dF)
+                           +'this is for debugging and will not'
+                           +'produce accurate results for a particular date'))
             dF = self._dF
 
         season_fluxes_outs = self.get_season_fluxes(dF,weights)
