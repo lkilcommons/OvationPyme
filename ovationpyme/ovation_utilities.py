@@ -192,8 +192,8 @@ def get_daily_f107(dt,oi):
     omjd = special_datetime.datetimearr2jd(oi['Epoch']).flatten()
     omf107 = oi['F10_INDEX']
     jd = special_datetime.datetime2jd(dt)
-    imatch = omjd==np.floor(jd)
-    return np.nanmean(omf107[imatch])
+    imatch = np.nanargmin(np.abs(omjd-jd))
+    return omf107[imatch]
 
 def calc_dF(dt):
     """dF==newell coupling for Ovation Prime"""
