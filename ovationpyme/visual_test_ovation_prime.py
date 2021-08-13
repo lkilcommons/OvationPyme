@@ -4,7 +4,6 @@ import numpy as np
 import matplotlib.pyplot as pp
 
 import ovation_prime
-import ovation_utilities
 from geospacepy import satplottools, special_datetime
 
 def draw_interpolated_conductance(new_mlat_grid, new_mlt_grid, dt, hemi):
@@ -182,7 +181,7 @@ if __name__=='__main__':
     dt3 = datetime.datetime(2011, 11, 29, 0, 50, 0)
 
     for dt in [dt1, dt2, dt3]:
-        new_mlat, new_mlt = np.meshgrid(np.linspace(60., 80., 40.), np.linspace(2., 6., 30.))
+        new_mlat, new_mlt = np.meshgrid(np.linspace(60., 80., 40), np.linspace(2., 6., 30))
         fiN = draw_interpolated_conductance(new_mlat, new_mlt, dt, 'N')
         fiN.savefig('ovation_conductance_interp_N_{0}.png'.format(dt.strftime(tfmt)))
 

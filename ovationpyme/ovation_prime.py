@@ -7,6 +7,7 @@ import datetime
 from collections import OrderedDict
 
 import numpy as np
+import pandas as pd
 from scipy import interpolate
 
 from ovationpyme import ovation_utilities
@@ -169,7 +170,7 @@ class ConductanceEstimator(object):
     (assumes a Maxwellian electron energy distribution)
     """
     def __init__(self,fluxtypes=['diff']):
-
+        log.debug('ConductanceEstimator.__init__()')
         #Use diffuse aurora only
         self.numflux_estimator = {}
         self.eavg_estimator = {}
@@ -383,6 +384,7 @@ class FluxEstimator(object):
             (for efficiency across multi-day calls)
 
         """
+        log.debug('FluxEstimator.__init__()')
         self.atype = atype #Type of aurora
 
         #Check for legacy values of this argument
@@ -551,7 +553,7 @@ class SeasonalFluxEstimator(object):
     """
 
     _valid_atypes = ['diff', 'mono', 'wave','ions']
-    
+
     def __init__(self, season, atype, energy_or_number):
         """
         season - str,['winter','spring','summer','fall']
@@ -564,7 +566,7 @@ class SeasonalFluxEstimator(object):
         energy_or_number - str, ['energy','number']
             type of flux you want to estimate
         """
-
+        log.debug('SeasonalFluxEstimator.__init__()')
         nmlt = 96   #number of mag local times in arrays (resolution of 15 minutes)
         nmlat = 160 #number of mag latitudes in arrays (resolution of 1/4 of a degree (.25))
         ndF = 12    #number of coupling strength bins
@@ -601,11 +603,15 @@ class SeasonalFluxEstimator(object):
         # files_done = 0
         # sf0 = 0
 
-        with open(self.afile, 'r') as f:
-            aheader = f.readline() # y0,d0,yend,dend,files_done,sf0
-            #print "Read Auroral Flux Coefficient File %s,\n Header: %s" % (self.afile,aheader)
-            # Don't know if it will read from where f pointer is after reading header line
-            adata = np.genfromtxt(f, max_rows=nmlat*nmlt)
+        # with open(self.afile, 'r') as f:
+        #     aheader = f.readline() # y0,d0,yend,dend,files_done,sf0
+        #     #print "Read Auroral Flux Coefficient File %s,\n Header: %s" % (self.afile,aheader)
+        #     # Don't know if it will read from where f pointer is after reading header line
+        #     adata = np.genfromtxt(f, max_rows=nmlat*nmlt)
+        log.debug('SeasonalFluxEstimator.__init__()  --- before load adata')
+        adata_parsed = pd.read_csv(self.afile, nrows=nmlat * nmlt, skiprows=1, sep='\s+', header=None)
+        adata = np.array(adata_parsed)
+        log.debug('SeasonalFluxEstimator.__init__()  --- after load adata')
             #print "First line was %s" % (str(adata[0,:]))
 
         #These are the coefficients for each bin which are used
@@ -629,12 +635,19 @@ class SeasonalFluxEstimator(object):
         #predicted flux calculations (related to the probability of
         #observing one type of aurora versus another)
         if atype in ['diff', 'mono', 'wave']:
-            with open(self.pfile, 'r') as f:
-                pheader = f.readline() #y0,d0,yend,dend,files_done,sf0
-                # Don't know if it will read from where f pointer is after reading header line
-                pdata_b = np.genfromtxt(f, max_rows=nmlt*nmlat) # 2 columns, b1 and b2
-                #print "Shape of b1p,b2p should be nmlt*nmlat=%d, is %s" % (nmlt*nmlat,len(pdata_b[:,0]))
-                pdata_p = np.genfromtxt(f, max_rows=nmlt*nmlat*ndF) # 1 column, pval
+            # with open(self.pfile, 'r') as f:
+            #     pheader = f.readline() #y0,d0,yend,dend,files_done,sf0
+            #     # Don't know if it will read from where f pointer is after reading header line
+            #     pdata_b = np.genfromtxt(f, max_rows=nmlt*nmlat) # 2 columns, b1 and b2
+            #     #print "Shape of b1p,b2p should be nmlt*nmlat=%d, is %s" % (nmlt*nmlat,len(pdata_b[:,0]))
+            #     pdata_p = np.genfromtxt(f, max_rows=nmlt*nmlat*ndF) # 1 column, pval
+            log.debug('SeasonalFluxEstimator.__init__()  --- before load pdata')
+            pdata_b_parsed = pd.read_csv(self.pfile, sep='\s+', skiprows=1, nrows=nmlt*nmlat, header=None)
+            pdata_b = np.array(pdata_b_parsed)
+
+            pdata_p_parsed = pd.read_csv(self.pfile, sep='\s+', skiprows=nmlt*nmlat+1, nrows=nmlt*nmlat*ndF, header=None)
+            pdata_p = np.transpose(np.array(pdata_p_parsed))
+            log.debug('SeasonalFluxEstimator.__init__()  --- after load pdata')
 
             #in the file the probability is stored with coupling strength bin
             #varying fastest (this is Fortran indexing order)
