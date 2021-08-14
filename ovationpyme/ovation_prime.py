@@ -19,8 +19,9 @@ import geospacepy
 from geospacepy import special_datetime,sun,satplottools
 import aacgmv2 #available on pip
 #import apexpy
-from logbook import Logger
-log = Logger('OvationPyme.ovation_prime')
+import logging
+log = logging.getLogger(__name__)
+
 
 #Determine where this module's source file is located
 #to determine where to look for the tables
@@ -171,6 +172,7 @@ class ConductanceEstimator(object):
     """
     def __init__(self,fluxtypes=['diff']):
         log.debug('ConductanceEstimator.__init__()')
+        print('ConductanceEstimator.__init__()')
         #Use diffuse aurora only
         self.numflux_estimator = {}
         self.eavg_estimator = {}
@@ -185,7 +187,7 @@ class ConductanceEstimator(object):
         """
         Compute total conductance using Robinson formula and emperical solar conductance model
         """
-        log.notice("Getting conductance with solar {0}, aurora {1}, fluxtypes {2}, background_ped: {3}, background_hall {4}".format(solar,
+        log.debug("Getting conductance with solar {0}, aurora {1}, fluxtypes {2}, background_ped: {3}, background_hall {4}".format(solar,
                     auroral, conductance_fluxtypes, background_p, background_h))
 
         all_sigp_auroral, all_sigh_auroral = [], []
