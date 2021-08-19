@@ -221,6 +221,8 @@ class ConductanceEstimator(object):
             all_sigp_auroral.append(this_sigp_auroral)
             all_sigh_auroral.append(this_sigh_auroral)
 
+        log.debug("after for fluxtype in conductance_fluxtypes")
+
         sigp_solar, sigh_solar, f107 =  self.solar_conductance(dt, mlat_grid, mlt_grid, return_f107=True)
         total_sigp_sqrd = np.zeros_like(sigp_solar)
         total_sigh_sqrd = np.zeros_like(sigh_solar)
@@ -253,7 +255,7 @@ class ConductanceEstimator(object):
             #the AMPERE MagPot AMIE ability to predict SuperDARN LOS V
             sigp[sigp<background_p]=background_p
             sigh[sigh<background_h]=background_h
-
+        log.debug("return from ConductanceEstimator.get_conductance")
         if return_dF and return_f107:
             return mlat_grid, mlt_grid, sigp, sigh, dF, f107
         elif return_dF:

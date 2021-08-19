@@ -11,7 +11,7 @@ from setuptools import setup, Extension
 from setuptools.command import install as _install
 
 setup(name='ovationpyme',
-      version = "0.1.0",
+      version = "0.1.1",
       description = "Ovation Prime Auroral Model",
       #author = "VT SuperDARN Lab and friends",
       #author_email = "ajribeiro86@gmail.com",
@@ -23,7 +23,14 @@ setup(name='ovationpyme',
       " auroral particle flux model originally created by Newell et al (JHU)"+\
       " and packaged on Sourceforge by Redmon (NOAA NCEI), Machol, and Case "+\
       " for more information visit: https://sourceforge.net/projects/ovation-prime/",
-      install_requires=['numpy','matplotlib','aacgmv2','geospacepy','logbook'],
+      install_requires=[
+          'numpy',
+          'pandas',
+          'matplotlib',
+          'aacgmv2',
+          'geospacepy',
+          'logbook'
+      ],
       packages=['ovationpyme'],
       package_dir={'ovationpyme' : 'ovationpyme'},
       package_data={'ovationpyme': ['data/premodel/*.txt']}, #data names must be list
