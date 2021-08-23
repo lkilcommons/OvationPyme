@@ -181,11 +181,12 @@ if __name__=='__main__':
     dt3 = datetime.datetime(2011, 11, 29, 0, 50, 0)
 
     for dt in [dt1, dt2, dt3]:
-        new_mlat, new_mlt = np.meshgrid(np.linspace(60., 80., 40), np.linspace(2., 6., 30))
-        fiN = draw_interpolated_conductance(new_mlat, new_mlt, dt, 'N')
+        north_new_mlat, north_new_mlt = np.meshgrid(np.linspace(60., 90., 60), np.linspace(2., 6., 30))
+        south_new_mlat, south_new_mlt = np.meshgrid(np.linspace(-90., -60., 60), np.linspace(2., 6., 30))
+        fiN = draw_interpolated_conductance(north_new_mlat, north_new_mlt, dt, 'N')
         fiN.savefig('ovation_conductance_interp_N_{0}.png'.format(dt.strftime(tfmt)))
 
-        fiS = draw_interpolated_conductance(new_mlat, new_mlt, dt, 'N')
+        fiS = draw_interpolated_conductance(south_new_mlat, south_new_mlt, dt, 'S')
         fiS.savefig('ovation_conductance_interp_S_{0}.png'.format(dt.strftime(tfmt)))
 
         f2N = draw_conductance(dt, 'N')
