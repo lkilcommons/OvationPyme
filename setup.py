@@ -11,7 +11,7 @@ from setuptools import setup, Extension
 from setuptools.command import install as _install
 
 setup(name='ovationpyme',
-      version = "0.1.1",
+      version = "0.1.2",
       description = "Ovation Prime Auroral Model",
       #author = "VT SuperDARN Lab and friends",
       #author_email = "ajribeiro86@gmail.com",
