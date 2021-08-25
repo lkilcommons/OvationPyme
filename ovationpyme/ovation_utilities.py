@@ -3,6 +3,7 @@
 """
 import datetime
 from collections import OrderedDict
+from typing import Tuple, Optional
 
 import numpy as np
 import functools
@@ -10,9 +11,18 @@ import functools
 from geospacepy import special_datetime, sun
 from nasaomnireader.omnireader import omni_interval
 from logbook import Logger
+
+from django.conf import settings
+
 log = Logger('OvationPyme.ovation_utilites')
 
 #_ovation_prime_omni_cadence = 'hourly' #Ovation Prime was created using hourly SW
+
+def get_proxy_config() -> Tuple[Optional[str], Optional[str]]:
+    proxy_url = getattr(settings, 'PROXY_API_URL', None)
+    proxy_key = getattr(settings, 'PROXY_API_KEY', None)
+    return proxy_url, proxy_key
+
 
 def cache_omni_interval(cadence):
     """Decorator which decorates functions with call signature
@@ -54,8 +64,8 @@ def cache_omni_interval(cadence):
             if need_new_oi:
                 startdt = dt-datetime.timedelta(days=new_interval_days_before_dt)
                 enddt = dt+datetime.timedelta(days=new_interval_days_after_dt)
-
-                oi = omni_interval(startdt,enddt,cadence,silent=True)
+                proxy_url, proxy_key = get_proxy_config()
+                oi = omni_interval(startdt,enddt,cadence,silent=True, proxy_url=proxy_url, proxy_key=proxy_key)
 
                 #Save to cache
                 cache['omni_interval_{}'.format(cadence)] = oi
