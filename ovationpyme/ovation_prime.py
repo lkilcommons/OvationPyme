@@ -196,10 +196,10 @@ class ConductanceEstimator(object):
         all_sigp_auroral, all_sigh_auroral = [], []
         # Create a bin interpolation corrector
         for fluxtype in conductance_fluxtypes:
-            mlat_grid, mlt_grid, numflux_grid, dF = self.numflux_estimator[fluxtype].get_flux_for_time(dt, hemi=hemi,
+            mlat_grid, mlt_grid, numflux_grid, dF, oi = self.numflux_estimator[fluxtype].get_flux_for_time(dt, hemi=hemi,
                                                                                                        return_dF=True)
             # mlat_grid, mlt_grid, energyflux_grid = self.energyflux_estimator.get_flux_for_time(dt, hemi=hemi)
-            mlat_grid, mlt_grid, eavg_grid = self.eavg_estimator[fluxtype].get_eavg_for_time(dt, hemi=hemi)
+            mlat_grid, mlt_grid, eavg_grid, oi = self.eavg_estimator[fluxtype].get_eavg_for_time(dt, hemi=hemi)
 
             if interp_bad_bins:
                 # Clean up any extremely large bins
@@ -261,13 +261,13 @@ class ConductanceEstimator(object):
             sigh[sigh < background_h] = background_h
         log.debug("return from ConductanceEstimator.get_conductance")
         if return_dF and return_f107:
-            return mlat_grid, mlt_grid, sigp, sigh, dF, f107
+            return mlat_grid, mlt_grid, sigp, sigh, dF, f107, oi
         elif return_dF:
-            return mlat_grid, mlt_grid, sigp, sigh, dF
+            return mlat_grid, mlt_grid, sigp, sigh, dF, oi
         elif return_f107:
-            return mlat_grid, mlt_grid, sigp, sigh, f107
+            return mlat_grid, mlt_grid, sigp, sigh, f107, oi
         else:
-            return mlat_grid, mlt_grid, sigp, sigh
+            return mlat_grid, mlt_grid, sigp, sigh, oi
 
     def solar_conductance(self, dt, mlats, mlts, return_f107=False):
         """
@@ -285,7 +285,7 @@ class ConductanceEstimator(object):
         """
         # Find the closest hourly f107 value
         # to the current time to specifiy the conductance
-        f107 = ovation_utilities.get_daily_f107(dt)
+        f107, oi = ovation_utilities.get_daily_f107(dt)
         if hasattr(self, '_f107'):
             log.warning(('Warning: Overriding real F107 {0}'.format(f107)
                          + 'with secret instance property _f107 {0}'.format(self._f107)
@@ -338,8 +338,8 @@ class AverageEnergyEstimator(object):
             'return_dF': True
         }
 
-        grid_mlats, grid_mlts, gridnumflux, dF = self.numflux_estimator.get_flux_for_time(dt, **kwargs)
-        grid_mlats, grid_mlts, gridenergyflux, dF = self.energyflux_estimator.get_flux_for_time(dt, **kwargs)
+        grid_mlats, grid_mlts, gridnumflux, dF, oi = self.numflux_estimator.get_flux_for_time(dt, **kwargs)
+        grid_mlats, grid_mlts, gridenergyflux, dF, oi = self.energyflux_estimator.get_flux_for_time(dt, **kwargs)
 
         grideavg = (gridenergyflux / 1.6e-12) / gridnumflux  # energy flux Joules->eV
         grideavg = grideavg / 1000.  # eV to keV
@@ -360,9 +360,9 @@ class AverageEnergyEstimator(object):
         grideavg[grideavg < .2] = 0.  # Min of 1 keV
 
         if not return_dF:
-            return grid_mlats, grid_mlts, grideavg
+            return grid_mlats, grid_mlts, grideavg, oi
         else:
-            return grid_mlats, grid_mlts, grideavg, dF
+            return grid_mlats, grid_mlts, grideavg, dF, oi
 
 
 class FluxEstimator(object):
@@ -523,7 +523,7 @@ class FluxEstimator(object):
         else:
             raise ValueError('Invalid hemisphere {0} (use N or S)'.format(hemi))
 
-        dF = ovation_utilities.calc_dF(dt)
+        dF, oi = ovation_utilities.calc_dF(dt)
         if hasattr(self, '_dF'):
             log.warning(('Warning: Overriding real Newell Coupling {0}'.format(dF)
                          + 'with secret instance property _dF {0}'.format(self._dF)
@@ -553,9 +553,9 @@ class FluxEstimator(object):
             grid_mlats = -1. * grid_mlats  # by default returns positive latitudes
 
         if not return_dF:
-            return grid_mlats, grid_mlts, gridflux
+            return grid_mlats, grid_mlts, gridflux, oi
         else:
-            return grid_mlats, grid_mlts, gridflux, dF
+            return grid_mlats, grid_mlts, gridflux, dF, oi
 
 
 class SeasonalFluxEstimator(object):
