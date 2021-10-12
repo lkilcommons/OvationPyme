@@ -1,6 +1,10 @@
 # Ovation Pyme
 ## A pure-python implementation of the Ovation Prime 2010 auroral precipitation model
 
+You can run the notebooks in this repo on the cloud by clicking below:
+
+[![Binder](https://mybinder.org/badge_logo.svg)](https://mybinder.org/v2/gh/lkilcommons/OvationPyme/HEAD?labpath=notebooks%2FInteractiveWithHemisphericPower.ipynb)
+
 ## Introduction to The Model
 Ovation Prime 2010, (described in [Newell et al., 2009](https://doi.org/10.1029/2009JA014326) and [Newell et al. 2010](https://doi.org/10.1029/2009JA014805)) is a model which predicts the total energy flux, total number flux,
 and average characteristic energy of precipitating electrons and ions in the polar regions.
