@@ -1,0 +1,5 @@
+numpy
+matplotlib
+-e git+git://github.com/lkilcommons/nasaomnireader.git#egg=nasaomnireader
+#For hemispheric power calculations
+-e git+git://github.com/lkilcommons/geospacepy-lite.git#egg=geospacepy
