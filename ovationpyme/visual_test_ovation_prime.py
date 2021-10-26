@@ -13,7 +13,7 @@ def draw_interpolated_conductance(new_mlat_grid, new_mlt_grid, dt, hemi):
     """
     estimator = ovation_prime.ConductanceEstimator(fluxtypes=['diff','mono'])
 
-    mlatgrid, mltgrid, pedgrid, hallgrid = estimator.get_conductance(dt, hemi=hemi, auroral=True, solar=True)
+    mlatgrid, mltgrid, pedgrid, hallgrid, oi = estimator.get_conductance(dt, hemi=hemi, auroral=True, solar=True)
 
     ped_interpolator = ovation_prime.LatLocaltimeInterpolator(mlatgrid, mltgrid, pedgrid)
     new_pedgrid = ped_interpolator.interpolate(new_mlat_grid, new_mlt_grid)
