@@ -172,8 +172,8 @@ class ConductanceEstimator(object):
     """
 
     def __init__(self, fluxtypes=['diff']):
-        log.debug('ConductanceEstimator.__init__()')
-        print('ConductanceEstimator.__init__()')
+        # log.debug('ConductanceEstimator.__init__()')
+        # print('ConductanceEstimator.__init__()')
         # Use diffuse aurora only
         self.numflux_estimator = {}
         self.eavg_estimator = {}
@@ -225,7 +225,7 @@ class ConductanceEstimator(object):
             all_sigp_auroral.append(this_sigp_auroral)
             all_sigh_auroral.append(this_sigh_auroral)
 
-        log.debug("after for fluxtype in conductance_fluxtypes")
+        # log.debug("after for fluxtype in conductance_fluxtypes")
 
         sigp_solar, sigh_solar, f107 = self.solar_conductance(dt, mlat_grid, mlt_grid, return_f107=True)
         total_sigp_sqrd = np.zeros_like(sigp_solar)
@@ -259,7 +259,7 @@ class ConductanceEstimator(object):
             # the AMPERE MagPot AMIE ability to predict SuperDARN LOS V
             sigp[sigp < background_p] = background_p
             sigh[sigh < background_h] = background_h
-        log.debug("return from ConductanceEstimator.get_conductance")
+        # log.debug("return from ConductanceEstimator.get_conductance")
         if return_dF and return_f107:
             return mlat_grid, mlt_grid, sigp, sigh, dF, f107, oi
         elif return_dF:
@@ -396,7 +396,7 @@ class FluxEstimator(object):
             (for efficiency across multi-day calls)
 
         """
-        log.debug('FluxEstimator.__init__()')
+        # log.debug('FluxEstimator.__init__()')
         self.atype = atype  # Type of aurora
 
         # Check for legacy values of this argument
@@ -582,7 +582,7 @@ class SeasonalFluxEstimator(object):
         energy_or_number - str, ['energy','number']
             type of flux you want to estimate
         """
-        log.debug('SeasonalFluxEstimator.__init__()')
+        # log.debug('SeasonalFluxEstimator.__init__()')
         nmlt = 96  # number of mag local times in arrays (resolution of 15 minutes)
         nmlat = 160  # number of mag latitudes in arrays (resolution of 1/4 of a degree (.25))
         ndF = 12  # number of coupling strength bins
@@ -624,10 +624,10 @@ class SeasonalFluxEstimator(object):
         #     #print "Read Auroral Flux Coefficient File %s,\n Header: %s" % (self.afile,aheader)
         #     # Don't know if it will read from where f pointer is after reading header line
         #     adata = np.genfromtxt(f, max_rows=nmlat*nmlt)
-        log.debug('SeasonalFluxEstimator.__init__()  --- before load adata')
+        # log.debug('SeasonalFluxEstimator.__init__()  --- before load adata')
         adata_parsed = pd.read_csv(self.afile, nrows=nmlat * nmlt, skiprows=1, sep='\s+', header=None)
         adata = np.array(adata_parsed)
-        log.debug('SeasonalFluxEstimator.__init__()  --- after load adata')
+        # log.debug('SeasonalFluxEstimator.__init__()  --- after load adata')
         # print "First line was %s" % (str(adata[0,:]))
 
         # These are the coefficients for each bin which are used
@@ -657,14 +657,14 @@ class SeasonalFluxEstimator(object):
             #     pdata_b = np.genfromtxt(f, max_rows=nmlt*nmlat) # 2 columns, b1 and b2
             #     #print "Shape of b1p,b2p should be nmlt*nmlat=%d, is %s" % (nmlt*nmlat,len(pdata_b[:,0]))
             #     pdata_p = np.genfromtxt(f, max_rows=nmlt*nmlat*ndF) # 1 column, pval
-            log.debug('SeasonalFluxEstimator.__init__()  --- before load pdata')
+            # log.debug('SeasonalFluxEstimator.__init__()  --- before load pdata')
             pdata_b_parsed = pd.read_csv(self.pfile, sep='\s+', skiprows=1, nrows=nmlt * nmlat, header=None)
             pdata_b = np.array(pdata_b_parsed)
 
             pdata_p_parsed = pd.read_csv(self.pfile, sep='\s+', skiprows=nmlt * nmlat + 1, nrows=nmlt * nmlat * ndF,
                                          header=None)
             pdata_p = np.transpose(np.array(pdata_p_parsed))
-            log.debug('SeasonalFluxEstimator.__init__()  --- after load pdata')
+            # log.debug('SeasonalFluxEstimator.__init__()  --- after load pdata')
 
             # in the file the probability is stored with coupling strength bin
             # varying fastest (this is Fortran indexing order)

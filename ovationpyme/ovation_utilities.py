@@ -69,15 +69,15 @@ def cache_omni_interval(cadence):
 
                 # Save to cache
                 cache['omni_interval_{}'.format(cadence)] = oi
-                log.debug("Created new solar wind interval: {}-{}".format(oi.startdt,
-                                                                          oi.enddt))
+                # log.debug("Created new solar wind interval: {}-{}".format(oi.startdt,
+                #                                                           oi.enddt))
             else:
                 # Load from cache
                 oi = cache['omni_interval_{}'.format(cadence)]
 
-                log.debug("Using cached solar wind interval: {}-{}".format(oi.startdt,
-                                                                           oi.enddt))
-            log.info(f"get interval {oi}")
+                # log.debug("Using cached solar wind interval: {}-{}".format(oi.startdt,
+                #                                                            oi.enddt))
+            # log.info(f"get interval {oi}")
             return func(dt, oi)
 
         return cache_omni_interval_wrapper
