@@ -9,7 +9,7 @@ os.environ['DISTUTILS_DEBUG'] = "1"
 from setuptools import setup
 
 setup(name='ovationpyme',
-      version="0.1.3",
+      version="0.1.4",
       description="Ovation Prime Auroral Model",
       # author = "VT SuperDARN Lab and friends",
       # author_email = "ajribeiro86@gmail.com",
