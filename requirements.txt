@@ -1,2 +1,2 @@
--e git+git://github.com/lkilcommons/nasaomnireader.git#egg=nasaomnireader
+-e git+https://github.com/lkilcommons/nasaomnireader.git#egg=nasaomnireader
 
