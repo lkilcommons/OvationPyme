@@ -47,6 +47,16 @@ def flux_estimator(request):
     atype, energy_or_number = 'diff', 'energy'
     return ovationpyme.ovation_prime.FluxEstimator(atype, energy_or_number)
 
+def test_b1a_same_as_idl(seasonal_flux_estimator, idl_call_results):
+    """
+    Test the value of b1p are
+    identical for a given i_mlt,j_mlat
+    """
+    j_mlat, i_mlt = idl_call_results['j_mlat'], idl_call_results['i_mlt']
+    b1a, b2a = idl_call_results['b1a'], idl_call_results['b2a']
+    b1py = seasonal_flux_estimator.b1a[i_mlt, j_mlat]
+    assert abs(b1py-b1a)<0.000001
+
 def test_b1_same_as_idl(seasonal_flux_estimator, idl_call_results):
     """
     Test the value of b1p are

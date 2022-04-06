@@ -174,11 +174,11 @@ def calc_avg_solarwind(dt,oi):
 
     #Calculate weighted averages
     avgsw = OrderedDict()
-    avgsw['Bx'] = np.nansum(sw4avg['Bx']*weights)/len(weights)
-    avgsw['By'] = np.nansum(sw4avg['By']*weights)/len(weights)
-    avgsw['Bz'] = np.nansum(sw4avg['Bz']*weights)/len(weights)
-    avgsw['V'] = np.nansum(sw4avg['V']*weights)/len(weights)
-    avgsw['Ec'] = np.nansum(sw4avg['Ec']*weights)/len(weights)
+    avgsw['Bx'] = np.nansum(sw4avg['Bx']*weights)/np.sum(weights)
+    avgsw['By'] = np.nansum(sw4avg['By']*weights)/np.sum(weights)
+    avgsw['Bz'] = np.nansum(sw4avg['Bz']*weights)/np.sum(weights)
+    avgsw['V'] = np.nansum(sw4avg['V']*weights)/np.sum(weights)
+    avgsw['Ec'] = np.nansum(sw4avg['Ec']*weights)/np.sum(weights)
 
     return avgsw
 

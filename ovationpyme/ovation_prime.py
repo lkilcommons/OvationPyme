@@ -659,7 +659,7 @@ class SeasonalFluxEstimator(object):
         """
         dFave = 4421. #Magic numbers!
         dFstep = dFave/8.
-        i_dFbin = np.round(dF/dFstep)
+        i_dFbin = np.floor(dF/dFstep)
         #Range check 0 <= i_dFbin <= n_dF_bins-1
         if i_dFbin < 0 or i_dFbin > self.n_dF_bins-1:
             i_dFbin = 0 if i_dFbin < 0 else self.n_dF_bins-1
