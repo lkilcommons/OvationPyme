@@ -1,8 +1,8 @@
 numpy
 matplotlib
 #For hemispheric power calculations (only in notebooks)
--e git+git://github.com/lkilcommons/geospacepy-lite.git#egg=geospacepy
+-e git+https://github.com/lkilcommons/geospacepy-lite.git#egg=geospacepy
 #Required by OvationPyme
--e git+git://github.com/lkilcommons/nasaomnireader.git#egg=nasaomnireader
+-e git+https://github.com/lkilcommons/nasaomnireader.git#egg=nasaomnireader
 #Need to install itself if running from /binder (won't run setup.py automatically)
--e git+git://github.com/lkilcommons/OvationPyme.git#egg=ovationpyme
+-e git+https://github.com/lkilcommons/OvationPyme.git#egg=ovationpyme
